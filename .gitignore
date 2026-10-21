@@ -1,0 +1,5 @@
+# Ajuste para a stack na task 001
+.DS_Store
+.env
+.env.*
+*.log
