@@ -123,8 +123,8 @@ A partir do README e da PRD, preencha `docs/overview.md`:
    status `todo`.
 3. **Board:** o Action `.github/workflows/sync-board.yml` coloca as issues no board, na ordem do
    roadmap, quando o PR abrir e quando ele for mergeado (precisa do secret `PROJECT_TOKEN`, veja
-   o README). Me lembre de criar as visões na interface (Board por Etapa, Backlog por Ordem,
-   Roadmap por Milestone) e o secret, se ainda não existirem.
+   o README). Me lembre de criar o secret, se ainda não existir (as visões vêm do projeto modelo
+   copiado pelo bootstrap).
 4. Faça commit do roadmap atualizado na `setup/docs`, me mostre o resultado e pergunte antes de
    dar push. Com o ok: `git push -u origin setup/docs` e abra o PR com
    `gh api repos/{owner}/{repo}/pulls -f head=setup/docs -f base=main -f title="[docs] Setup a partir dos docs" -F body=@<corpo.md>`.

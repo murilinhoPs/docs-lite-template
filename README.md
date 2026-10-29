@@ -49,10 +49,14 @@ O `bootstrap.sh` roda **só localmente**, com o `gh` do usuário logado: ele usa
 (`gh project`, `gh label`, `gh repo edit`), que as sessões do Claude Code na nuvem não têm.
 
 Ele cria o que o template não copia: milestones, labels (`type:*`, `prio:*`, `status:doing` e as
-`area:*` da tabela Features do `prd.md`), board no Projects (campos Etapa e Ordem, número salvo
-em `scripts/board.conf`), a issue `[chore] Setup do projeto` com a linha dela no roadmap, branch
+`area:*` da tabela Features do `prd.md`), board no Projects (cópia do projeto modelo, com os
+campos Etapa e Ordem e as visões; número salvo em `scripts/board.conf`), a issue `[chore] Setup do projeto` com a linha dela no roadmap, branch
 `pr-assets`, worktree de prints, squash-only e proteção da `main`. Pode rodar de novo: ele pula
 o que já existe (rode de novo depois de preencher a tabela Features, para criar as `area:*`).
+
+O projeto modelo é `murilinhoPs/2`. Para usar outro: `BOARD_TEMPLATE=<owner>/<número> ./scripts/bootstrap.sh`.
+O modelo precisa ter o campo `Etapa` (single select com `todo`, `doing`, `review`, `done`) e o
+campo `Ordem` (number); as visões vêm junto na cópia.
 
 ## Sync do board
 
@@ -90,8 +94,10 @@ recém-criado não fica com CI vermelho.
 - [ ] Commit de `scripts/board.conf` e `docs/roadmap.md` (issue de setup) gerados pelo bootstrap,
       numa branch + PR (a `main` fica protegida)
 - [ ] Criar o token e o secret `PROJECT_TOKEN` (veja "Sync do board")
-- [ ] Criar as visões do board na interface do Projects:
-      **Board** agrupado por Etapa · **Backlog** em tabela ordenada por Ordem · **Roadmap** por Milestone
+- [ ] Conferir o board: o bootstrap copia o projeto modelo
+      [murilinhoPs/projects/2](https://github.com/users/murilinhoPs/projects/2) com as visões
+      **Board** (por Etapa), **Backlog** (tabela por Ordem) e **Roadmap** (por Milestone).
+      Se a cópia falhar, ele cria um board vazio e as visões ficam para fazer à mão
 - [ ] Trocar o título e a frase deste README
 - [ ] Preencher `docs/overview.md` e `docs/prd.md` (com a tabela Features) e criar as specs em
       `docs/specs/` (ou importar docs que você já tem, veja abaixo)

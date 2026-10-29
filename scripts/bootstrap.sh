@@ -76,6 +76,9 @@ else
 fi
 
 # 4. Board no GitHub Projects (espelho do docs/roadmap.md)
+# Copia o projeto modelo (campos Etapa e Ordem + visões Board, Backlog e Roadmap).
+# Troque com BOARD_TEMPLATE=<owner>/<número> ./scripts/bootstrap.sh, ou BOARD_TEMPLATE= para não copiar.
+BOARD_TEMPLATE="${BOARD_TEMPLATE-murilinhoPs/2}"
 CONF="scripts/board.conf"
 OWNER="${REPO%%/*}"
 if [ -f "$CONF" ]; then
@@ -83,14 +86,29 @@ if [ -f "$CONF" ]; then
 elif ! gh project list --owner "$OWNER" --limit 1 >/dev/null 2>&1; then
   echo "  aviso: board não criado. Rode 'gh auth refresh -s project' e depois este script de novo."
 else
-  NUM="$(gh project create --owner "$OWNER" --title "$(basename "$REPO")" --format json -q .number)"
+  TITLE="$(basename "$REPO")"
+  NUM=""
+  if [ -n "$BOARD_TEMPLATE" ]; then
+    NUM="$(gh project copy "${BOARD_TEMPLATE#*/}" --source-owner "${BOARD_TEMPLATE%%/*}" \
+      --target-owner "$OWNER" --title "$TITLE" --format json -q .number 2>/dev/null)" \
+      || echo "  aviso: não consegui copiar o projeto modelo $BOARD_TEMPLATE; criando um board vazio"
+  fi
+  if [ -n "$NUM" ]; then
+    fields="$(gh project field-list "$NUM" --owner "$OWNER" --format json --limit 100 \
+      -q '[.fields[] | select(.name == "Etapa" or .name == "Ordem") | .name] | sort | join(",")')"
+    [ "$fields" = "Etapa,Ordem" ] || echo "  aviso: o modelo $BOARD_TEMPLATE não tem os campos Etapa e Ordem; o sync vai falhar"
+    echo "  board copiado do modelo $BOARD_TEMPLATE: projeto #$NUM (com as visões)"
+  else
+    NUM="$(gh project create --owner "$OWNER" --title "$TITLE" --format json -q .number)"
+    gh project field-create "$NUM" --owner "$OWNER" --name "Etapa" \
+      --data-type SINGLE_SELECT --single-select-options "todo,doing,review,done" >/dev/null
+    gh project field-create "$NUM" --owner "$OWNER" --name "Ordem" --data-type NUMBER >/dev/null
+    echo "  board criado: projeto #$NUM"
+    echo "  falta na interface: visões Board (por Etapa), Backlog (tabela por Ordem) e Roadmap (por Milestone)"
+  fi
   gh project link "$NUM" --owner "$OWNER" --repo "$REPO" >/dev/null
-  gh project field-create "$NUM" --owner "$OWNER" --name "Etapa" \
-    --data-type SINGLE_SELECT --single-select-options "todo,doing,review,done" >/dev/null
-  gh project field-create "$NUM" --owner "$OWNER" --name "Ordem" --data-type NUMBER >/dev/null
   printf 'OWNER=%s\nPROJECT_NUMBER=%s\n' "$OWNER" "$NUM" > "$CONF"
-  echo "  board criado: projeto #$NUM (salvo em $CONF; faça commit desse arquivo)"
-  echo "  falta na interface: visões Board (por Etapa), Backlog (tabela por Ordem) e Roadmap (por Milestone)"
+  echo "  número salvo em $CONF (faça commit desse arquivo)"
   echo "  falta no repo: secret PROJECT_TOKEN para o Action de sync (veja o README)"
 fi
 
