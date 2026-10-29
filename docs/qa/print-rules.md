@@ -39,10 +39,11 @@ cd ../<repo>-assets/issue-<N>/<sha7>
   done; } > print_sizes.txt
 ```
 
-O PR aponta para a pasta do head final (seção Prints do PR template). O check `pr-gate`
-confere que o `commit:` do `print_sizes.txt` é o head do PR e que o `<sha7>` da pasta é prefixo
-dele. Push depois dos prints? Teste de novo, salve numa pasta nova e rode
-`./scripts/open-pr.sh --update <pr>`.
+O PR aponta para a pasta de prints que vale para o head final (seção Prints do PR template).
+O check `pr-gate` confere que o `<sha7>` da pasta é prefixo do `commit:` do `print_sizes.txt` e
+que esse commit é o head do PR ou um ancestral dele com **só docs** mudando depois (como o
+commit do `done` no roadmap e o `Registra PR #M`, que vêm depois do `/qa`). Mudou código depois
+dos prints? Teste de novo (`/qa`), salve numa pasta nova e rode `./scripts/open-pr.sh --update <pr>`.
 
 PR só de docs (`./scripts/docs-only.sh`) não precisa de prints.
 

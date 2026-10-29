@@ -86,6 +86,9 @@ A partir do README e da PRD, preencha `docs/overview.md`:
 
 # Fase 3: dividir a PRD em specs por feature + issues
 
+As Fases 3 e 4 seguem o comando `/planejar` (`.claude/commands/planejar.md`): proposta →
+aprovação → specs + issues + roadmap num PR só de docs.
+
 1. **Specs:** para cada feature da tabela Features, crie `docs/specs/<feature>.md` a partir de
    `docs/specs/_template.md` (frontmatter `feature: F<n>`, `area:`, `updated:`). Descreva como a
    feature deve funcionar com o que está na PRD, nas telas e nos fluxos da demo, e escreva os
@@ -121,10 +124,9 @@ A partir do README e da PRD, preencha `docs/overview.md`:
    `./scripts/new-issue.sh --title "[feat] <título>" --body-file <corpo.md> --milestone "<milestone>" --labels "type:feature,area:<x>"`.
    O script cria a issue pela API REST e insere a linha no fim do milestone no roadmap, com
    status `todo`.
-3. **Board:** o Action `.github/workflows/sync-board.yml` coloca as issues no board, na ordem do
-   roadmap, quando o PR abrir e quando ele for mergeado (precisa do secret `PROJECT_TOKEN`, veja
-   o README). Me lembre de criar o secret, se ainda não existir (as visões vêm do projeto modelo
-   copiado pelo bootstrap).
+3. **Board:** rode `./scripts/sync-board.sh --auto`. Onde o board é acessível (Claude Code local),
+   ele coloca as issues no board, na ordem do roadmap; numa sessão na nuvem, ele avisa e segue, e
+   eu rodo o sync localmente depois do merge.
 4. Faça commit do roadmap atualizado na `setup/docs`, me mostre o resultado e pergunte antes de
    dar push. Com o ok: `git push -u origin setup/docs` e abra o PR com
    `gh api repos/{owner}/{repo}/pulls -f head=setup/docs -f base=main -f title="[docs] Setup a partir dos docs" -F body=@<corpo.md>`

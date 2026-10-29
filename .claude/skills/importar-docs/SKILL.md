@@ -74,7 +74,11 @@ até o usuário aprovar explicitamente. Não comece sem um "pode seguir" (ou equ
 
 ## 5. Execução
 
-1. Siga o plano aprovado e as regras de importação do `CLAUDE.md`.
+A execução segue o mesmo caminho do `/planejar` (`.claude/commands/planejar.md`, passo 4):
+proposta aprovada → specs + issues + roadmap num PR só de docs.
+
+1. Siga o plano aprovado e as regras de importação do `CLAUDE.md`, numa branch nova a partir da
+   `main` atualizada: `git switch -c plan/importacao`.
 2. Use `git mv` para arquivos que só mudam de lugar, para manter o histórico.
 3. Escreva PRD (tabela Features), specs e ADRs (atualize o índice em `docs/adr/README.md`).
 4. Crie as issues aprovadas, na ordem do plano, com `./scripts/new-issue.sh` (corpo no formato
@@ -84,13 +88,16 @@ até o usuário aprovar explicitamente. Não comece sem um "pode seguir" (ou equ
 5. Ao terminar, confira: todo link em `docs/README.md`, `docs/prd.md` e `docs/roadmap.md` aponta
    para um arquivo existente, toda spec citada numa issue existe, todo AC citado numa issue
    existe na spec, e os milestones do roadmap batem com os de `scripts/bootstrap.sh`.
-6. Faça um commit local: `docs: importa docs existentes`. Não dê push.
+6. Faça o commit (`docs: importa docs existentes`), `git push -u origin plan/importacao` e abra
+   o PR só de docs como no `/planejar`
+   (`gh api repos/{owner}/{repo}/pulls ... -F body=@<corpo.md>` e depois
+   `./scripts/open-pr.sh --update <pr>` para o `**Head:**`). O merge é do usuário.
 
 ## 6. Relatório
 
 Diga ao usuário:
 
-- o que foi para onde (a tabela final) e as issues criadas, com número;
+- o que foi para onde (a tabela final), as issues criadas, com número, e o link do PR;
 - os `TODO` que ficaram, por arquivo;
 - o que não foi importado e por quê;
 - próximos passos (ex.: revisar o PRD, aceitar os ADRs, criar as labels `area:*` novas

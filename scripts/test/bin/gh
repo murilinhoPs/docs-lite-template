@@ -113,7 +113,9 @@ case "$method $path" in
   "GET milestones") cat "$S/milestones.json" | out ;;
   "GET issues")
     label="$(param labels)"
-    jq --arg l "$label" '[.[] | select($l == "" or any(.labels[]; .name == $l))]' "$S/issues.json" | out ;;
+    state="$(param state)"
+    jq --arg l "$label" --arg s "${state:-open}" \
+      '[.[] | select(($l == "" or any(.labels[]; .name == $l)) and ($s == "all" or (.state // "open") == $s))]' "$S/issues.json" | out ;;
   "GET issues/"*)
     n="${path#issues/}"
     jq -e --argjson n "$n" '.[] | select(.number == $n)' "$S/issues.json" | out \
@@ -151,6 +153,13 @@ case "$method $path" in
     ref="$(jq -r --argjson n "$n" '.[] | select(.number == $n) | .head.ref' "$S/pulls.json")"
     sha="$(git rev-parse "refs/remotes/origin/$ref")"
     jq -e --argjson n "$n" --arg sha "$sha" '.[] | select(.number == $n) | .head.sha = $sha' "$S/pulls.json" | out ;;
+  "PUT pulls/"*/merge)
+    # Merge travado no head: sha diferente do head da branch dá 409.
+    n="${path#pulls/}"; n="${n%/merge}"
+    ref="$(jq -r --argjson n "$n" '.[] | select(.number == $n) | .head.ref' "$S/pulls.json")"
+    head="$(git rev-parse "refs/remotes/origin/$ref")"
+    [ "$(jq -r .sha <<<"$body")" = "$head" ] || { echo "HTTP 409: Head branch was modified. Review and try the merge again." >&2; exit 1; }
+    jq -n --arg sha "$(printf '%040d' 1)" '{merged: true, message: "Pull Request successfully merged", sha: $sha}' | out ;;
   "PATCH pulls/"*)
     n="${path#pulls/}"
     jq --argjson n "$n" --argjson b "$body" 'map(if .number == $n then . + $b else . end)' \

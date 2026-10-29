@@ -7,13 +7,14 @@
 #   Closes #N · Spec da issue (atualizada nesta branch ou não) · Head (40 caracteres)
 #   Tipo (código / só docs, pelo diff) · O que entrou (--summary-file ou stdin)
 #   AC da issue · Testes · Prints · Registro · Co-authored-by (--coauthor, última linha)
-# Prints: --prints, ou a pasta pr-assets/issue-<N>/<sha7 do head>/ se existir.
+# Prints: --prints, ou a pasta pr-assets/issue-<N>/<sha7>/ mais recente que vale
+# para o head (o commit dos prints, ou um anterior com só docs mudando depois).
 # PR só de docs (scripts/docs-only.sh) dispensa prints e testes.
 #
-# Não faz commit depois de abrir o PR: o head do PR é o commit aprovado (o
-# pr-gate confere). O número do PR vai para o roadmap no task-status.sh <N> done.
-# Também remove a label status:doing da issue.
-# Idempotente: se já existe PR aberto para a branch, só imprime a URL.
+# Depois de criar o PR, grava o número na coluna PR do roadmap num commit seguinte
+# ("Registra PR #M no roadmap", só docs/roadmap.md), dá push e atualiza o Head do
+# corpo para esse commit. Os prints continuam valendo: depois deles só mudou docs.
+# Idempotente: se já existe PR aberto para a branch, só registra e imprime a URL.
 #
 # --update <pr>: depois de um push num PR aberto, reescreve só o "**Head:**" e a
 # pasta de prints do corpo (PATCH), sem mexer no resto.
@@ -61,31 +62,31 @@ REPO="$(repo_slug)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-# Linha de prints para o head: --prints, ou a pasta do head na pr-assets. prints_for <issue> <head>
+# Linha de prints para o head: --prints, ou a pasta mais recente que vale para ele.
+# prints_for <issue> <head>
 prints_for() {
-  local sha7="${2:0:7}"
+  local sha7
   if [ -n "$PRINTS" ]; then
     echo "$PRINTS"
-  elif git rev-parse -q --verify "origin/pr-assets:issue-$1/$sha7" >/dev/null; then
-    echo "[pr-assets/issue-$1/$sha7/](https://github.com/$REPO/tree/pr-assets/issue-$1/$sha7)"
+  else
+    sha7="$(prints_dir "$1" "$2")"
+    [ -z "$sha7" ] || echo "[pr-assets/issue-$1/$sha7/](https://github.com/$REPO/tree/pr-assets/issue-$1/$sha7)"
   fi
 }
 
-if [ -n "$UPDATE" ]; then
-  PR_JSON="$(gh api "repos/$REPO/pulls/$UPDATE")"
-  HEAD="$(jq -r .head.sha <<<"$PR_JSON")"
-  [ "$(git rev-parse HEAD)" = "$HEAD" ] \
-    || echo "aviso: o HEAD local não é o head do PR (${HEAD:0:7}); uso o do PR." >&2
-  jq -r '.body // ""' <<<"$PR_JSON" | tr -d '\r' > "$TMP/body.md"
-  N="$(grep -m1 -oE '^Closes #[0-9]+' "$TMP/body.md" | tr -dc '0-9' || true)"
+# Reescreve o "**Head:**" e a pasta de prints do corpo do PR. update_body <pr> <head>
+update_body() {
+  local pr="$1" head="$2" n new_prints old_prints
+  gh api "repos/$REPO/pulls/$pr" -q '.body // ""' | tr -d '\r' > "$TMP/body.md"
+  n="$(grep -m1 -oE '^Closes #[0-9]+' "$TMP/body.md" | tr -dc '0-9' || true)"
   git fetch -q origin pr-assets 2>/dev/null || true
-  NEW_PRINTS=""
-  [ -z "$N" ] || NEW_PRINTS="$(prints_for "$N" "$HEAD")"
-  OLD_PRINTS="$(body_prints "$(cat "$TMP/body.md")")"
-  if [ -z "$NEW_PRINTS" ] && [ -n "$OLD_PRINTS" ] && [[ "$HEAD" != "$(basename "$OLD_PRINTS")"* ]]; then
-    echo "aviso: $OLD_PRINTS é de outro commit e não há prints do head: teste de novo ou passe --prints \"n/a: <motivo>\" (o pr-gate vai falhar)." >&2
+  new_prints=""
+  [ -z "$n" ] || new_prints="$(prints_for "$n" "$head")"
+  old_prints="$(body_prints "$(cat "$TMP/body.md")")"
+  if [ -z "$new_prints" ] && [ -n "$old_prints" ]; then
+    echo "aviso: $old_prints não vale para o head ${head:0:7} (mudou código depois dos prints): teste de novo ou passe --prints \"n/a: <motivo>\" (o pr-gate vai falhar)." >&2
   fi
-  awk -v head="$HEAD" -v prints="$NEW_PRINTS" '
+  awk -v head="$head" -v prints="$new_prints" '
     /^\*\*Head:\*\*/ { print "**Head:** " head; done_head = 1; next }
     /^## / { skip = 0 }
     /^## Prints/ && prints != "" { print; print ""; print prints; print ""; skip = 1; next }
@@ -94,9 +95,23 @@ if [ -n "$UPDATE" ]; then
     END { if (!done_head) exit 3 }
   ' "$TMP/body.md" > "$TMP/new.md" || {
     # Sem linha Head (PR aberto à mão): ela entra no topo.
-    { echo "**Head:** $HEAD"; echo; cat "$TMP/body.md"; } > "$TMP/new.md"
+    { echo "**Head:** $head"; echo; cat "$TMP/body.md"; } > "$TMP/new.md"
   }
-  gh api -X PATCH "repos/$REPO/pulls/$UPDATE" -F "body=@$TMP/new.md" -q .html_url
+  gh api -X PATCH "repos/$REPO/pulls/$pr" -F "body=@$TMP/new.md" -q .html_url
+}
+
+if [ -n "$UPDATE" ]; then
+  PR_JSON="$(gh api "repos/$REPO/pulls/$UPDATE")"
+  HEAD="$(jq -r .head.sha <<<"$PR_JSON")"
+  # Logo depois de um push, a API pode ainda mostrar o head anterior: na branch do
+  # PR, com tudo enviado, vale o HEAD local.
+  if [ "$(git branch --show-current)" = "$(jq -r .head.ref <<<"$PR_JSON")" ] \
+    && [ "$(git rev-parse HEAD)" = "$(git rev-parse '@{u}' 2>/dev/null)" ]; then
+    HEAD="$(git rev-parse HEAD)"
+  elif [ "$(git rev-parse HEAD)" != "$HEAD" ]; then
+    echo "aviso: o HEAD local não é o head do PR (${HEAD:0:7}); uso o do PR." >&2
+  fi
+  update_body "$UPDATE" "$HEAD"
   exit 0
 fi
 
@@ -108,6 +123,8 @@ BRANCH="$(git branch --show-current)"
 [ -n "$BRANCH" ] && [ "$BRANCH" != main ] || { echo "Rode a partir da branch da task, não da main." >&2; exit 1; }
 git rev-parse --verify -q '@{u}' >/dev/null || { echo "A branch não tem upstream: git push -u origin $BRANCH" >&2; exit 1; }
 [ "$(git rev-list --count '@{u}..HEAD')" = 0 ] || { echo "Há commits sem push: git push" >&2; exit 1; }
+git diff --quiet -- "$ROADMAP" && git diff --cached --quiet -- "$ROADMAP" \
+  || { echo "docs/roadmap.md tem mudanças sem commit." >&2; exit 1; }
 
 PR_JSON="$(gh api "repos/$REPO/pulls?state=open&head=${REPO%%/*}:$BRANCH" -q '.[0] // empty')"
 
@@ -156,7 +173,7 @@ if [ -z "$PR_JSON" ]; then
 
   tested_by="usuário"
   prints_for "$N" "$HEAD" > "$TMP/prints.md"
-  [ -s "$TMP/prints.md" ] || { echo "Não há pr-assets/issue-$N/$SHA7/: passe --prints \"n/a: <motivo>\"." >&2; exit 1; }
+  [ -s "$TMP/prints.md" ] || { echo "Não há prints em pr-assets/issue-$N/ que valham para ${SHA7}: rode /qa ou passe --prints \"n/a: <motivo>\"." >&2; exit 1; }
   [ -n "$PRINTS" ] || tested_by="usuário + Claude"
 
   { echo "- Arquivos alterados: $(git diff --name-only "$BASE" HEAD | sed 's/.*/`&`/' | paste -sd ',' - | sed 's/,/, /g')"
@@ -194,8 +211,14 @@ if [ -z "$PR_JSON" ]; then
     -f "title=$TITLE" -F "body=@$TMP/body.md")"
 fi
 
+PR="$(jq -r .number <<<"$PR_JSON")"
 URL="$(jq -r .html_url <<<"$PR_JSON")"
 
-gh api -X DELETE "repos/$REPO/issues/$N/labels/status:doing" >/dev/null 2>&1 || true
+roadmap_set "$ROADMAP" "$N" pr "#$PR"
+if ! git diff --quiet -- "$ROADMAP"; then
+  git commit -q -m "Registra PR #$PR no roadmap" -- "$ROADMAP"
+  git push -q
+  update_body "$PR" "$(git rev-parse HEAD)" >/dev/null
+fi
 
 echo "$URL"

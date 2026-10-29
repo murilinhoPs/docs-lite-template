@@ -155,3 +155,26 @@ body_head() {
 body_prints() {
   grep -oE 'pr-assets/issue-[0-9]+/[0-9a-f]{7,40}/' <<<"$1" | head -n1 || true
 }
+
+# Sai com 0 se os prints tirados em <commit> valem para <head>: <commit> é ancestral
+# de <head> e, desde ele, só mudaram docs (mesma regra do docs_only).
+# prints_valid <commit> <head>
+prints_valid() {
+  git merge-base --is-ancestor "$1" "$2" 2>/dev/null && docs_only "$1" "$2"
+}
+
+# sha7 da pasta de prints mais recente da issue que vale para <head>, ou vazio.
+# Lê origin/pr-assets:issue-<N>/<sha7>/. prints_dir <issue> <head>
+prints_dir() {
+  local d best="" dist min=""
+  for d in $(git ls-tree --name-only "origin/pr-assets:issue-$1" 2>/dev/null); do
+    git rev-parse -q --verify "$d^{commit}" >/dev/null || continue
+    prints_valid "$d" "$2" || continue
+    dist="$(git rev-list --count "$d..$2")"
+    if [ -z "$min" ] || [ "$dist" -lt "$min" ]; then
+      min="$dist"
+      best="$d"
+    fi
+  done
+  echo "$best"
+}

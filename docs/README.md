@@ -29,8 +29,10 @@ comportamento atualiza a spec no mesmo PR.
 ## Regras
 
 - A ordem das linhas em `roadmap.md` é a ordem de execução. Cada linha é uma issue.
-- `roadmap.md` manda no board: o Action `.github/workflows/sync-board.yml` copia o roadmap para o
-  board no PR, no merge e quando a label `status:doing` muda. Nunca mova cards à mão.
+- `roadmap.md` guarda o destino de cada issue (`todo`, `doing`, `done`). O board espelha o roadmap
+  e o andamento no GitHub (issue fechada → `done`, PR aberto → `review`), pelo
+  `./scripts/sync-board.sh`, que roda onde o board é acessível. Nunca mova cards à mão.
+- Cada fase do trabalho tem um comando em `.claude/commands/` (veja o `CLAUDE.md`).
 - Só uma issue em `doing` por vez.
 - Merge só com os checks `ci` e `pr-gate` verdes no head e a branch atualizada com a `main`.
   PR só de docs (tudo em `docs/` ou `*.md`, exceto o `CLAUDE.md`) dispensa prints e QA.

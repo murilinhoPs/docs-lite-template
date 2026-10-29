@@ -1,48 +1,25 @@
 #!/usr/bin/env bash
-# Muda o status de uma issue no docs/roadmap.md.
+# Muda o status de uma issue no docs/roadmap.md: todo, doing ou done.
 #
-# Também mantém a label status:doing na issue (só API REST do repositório):
-# adiciona no doing e remove nos outros. É ela que faz o board mostrar "doing"
-# enquanto a branch da task ainda não subiu. No done, grava na coluna PR o PR
-# mergeado que fecha a issue ("Closes #N"). Se o board for acessível daqui
-# (Claude Code local), roda o sync-board.sh; senão o Action sincroniza.
+# O roadmap guarda o destino: o /abrir-pr já marca done, porque é o estado que a
+# linha terá quando o PR entrar na main (a coluna PR fica para o open-pr.sh). O
+# andamento real (PR aberto, issue fechada) o sync-board.sh lê do GitHub.
+# Sincroniza o board quando ele é acessível daqui; senão, avisa e segue.
 #
-# Uso: ./scripts/task-status.sh <issue> <todo|doing|review|done>
+# Uso: ./scripts/task-status.sh <issue> <todo|doing|done>
 set -euo pipefail
 
 # shellcheck source=scripts/lib.sh
 source "$(dirname "$0")/lib.sh"
 
-N="${1:?Uso: $0 <issue> <todo|doing|review|done>}"
-STATUS="${2:?Uso: $0 <issue> <todo|doing|review|done>}"
+N="${1:?Uso: $0 <issue> <todo|doing|done>}"
+STATUS="${2:?Uso: $0 <issue> <todo|doing|done>}"
 N="${N#\#}"
 [[ "$N" =~ ^[0-9]+$ ]] || { echo "Número de issue inválido: $1" >&2; exit 1; }
-[[ "$STATUS" =~ ^(todo|doing|review|done)$ ]] || { echo "Status inválido: $STATUS" >&2; exit 1; }
+[[ "$STATUS" =~ ^(todo|doing|done)$ ]] || { echo "Status inválido: $STATUS (use todo, doing ou done)" >&2; exit 1; }
 
 ROADMAP="$(git rev-parse --show-toplevel)/docs/roadmap.md"
 roadmap_set "$ROADMAP" "$N" status "$STATUS"
 echo "#$N → $STATUS"
 
-REPO="$(repo_slug)"
-if [ "$STATUS" = doing ]; then
-  gh api "repos/$REPO/issues/$N/labels" -f "labels[]=status:doing" >/dev/null
-  echo "  label status:doing adicionada"
-else
-  # 404 quando a issue não tem a label: não é erro.
-  gh api -X DELETE "repos/$REPO/issues/$N/labels/status:doing" >/dev/null 2>&1 || true
-fi
-
-if [ "$STATUS" = done ] && [ -z "$(roadmap_get "$ROADMAP" "$N" pr)" ]; then
-  PR="$(gh api --paginate "repos/$REPO/pulls?state=closed&per_page=100" \
-    -q ".[] | select(.merged_at != null and ((.body // \"\") | test(\"(?i)(close[sd]?|fix(e[sd])?|resolve[sd]?) #$N([^0-9]|\$)\"))) | .number" | head -n1)"
-  if [ -n "$PR" ]; then
-    roadmap_set "$ROADMAP" "$N" pr "#$PR"
-    echo "  PR #$PR na coluna PR"
-  else
-    echo "  aviso: não achei PR mergeado com \"Closes #$N\"; preencha a coluna PR à mão"
-  fi
-fi
-
-if board_available; then
-  "$(dirname "$0")/sync-board.sh"
-fi
+"$(dirname "$0")/sync-board.sh" --auto

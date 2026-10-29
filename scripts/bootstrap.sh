@@ -38,7 +38,6 @@ type:chore BFD4F2
 prio:alta B60205
 prio:media FBCA04
 prio:baixa FEF2C0
-status:doing 5319E7
 LABELS
 gh label create type:design --repo "$REPO" --color D4C5F9 --description "Mudança visual, exige prints" --force >/dev/null
 
@@ -60,7 +59,7 @@ if [ -n "$AREAS" ]; then
 else
   echo "  aviso: nenhuma área na tabela Features do docs/prd.md; labels area:* não criadas (rode de novo depois de preenchê-la)"
 fi
-echo "  labels: type:*, prio:*, status:doing"
+echo "  labels: type:*, prio:*"
 
 # 3. Issue de setup (corpo em docs/prompts/issue-setup.md) e a linha dela no roadmap
 SETUP_TITLE="[chore] Setup do projeto"
@@ -109,7 +108,6 @@ else
   gh project link "$NUM" --owner "$OWNER" --repo "$REPO" >/dev/null
   printf 'OWNER=%s\nPROJECT_NUMBER=%s\n' "$OWNER" "$NUM" > "$CONF"
   echo "  número salvo em $CONF (faça commit desse arquivo)"
-  echo "  falta no repo: secret PROJECT_TOKEN para o Action de sync (veja o README)"
 fi
 
 # 5. Branch órfã pr-assets para prints de teste

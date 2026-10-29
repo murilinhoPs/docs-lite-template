@@ -4,7 +4,9 @@
 # Lê o evento pull_request de $GITHUB_EVENT_PATH e confere:
 #   - o "**Head:**" do corpo é o head do PR;
 #   - se o corpo cita uma pasta de prints (pr-assets/issue-<N>/<sha7>/), o
-#     print_sizes.txt dela diz "commit: <head>" e o <sha7> é prefixo do head.
+#     print_sizes.txt dela diz "commit: <C>", o <sha7> é prefixo de C, e C é o
+#     head ou um ancestral dele com só docs mudando depois (o commit do done no
+#     roadmap e o "Registra PR #M" não invalidam os prints; código novo invalida).
 #     PR só de docs (scripts/docs-only.sh) pula a checagem de prints.
 # Roda no job pr-gate de .github/workflows/pr-gate.yml; precisa do head e da
 # base no clone (checkout com fetch-depth: 0).
@@ -50,11 +52,16 @@ else
       fail "Não achei $DIR""print_sizes.txt na branch pr-assets: gere os prints do head (docs/qa/print-rules.md) e rode \`$UPDATE\`."
     else
       COMMIT="$(sed -n 's/^commit:[[:space:]]*//p' <<<"$CONTENT" | head -n1)"
-      [ "$COMMIT" = "$HEAD" ] \
-        || fail "Os prints de $DIR são do commit ${COMMIT:0:7}, não do head ${HEAD:0:7}: teste de novo, salve em pr-assets/issue-<N>/${HEAD:0:7}/ e rode \`$UPDATE\`."
-      [[ "$HEAD" == "$SHA7"* ]] \
-        || fail "A pasta de prints $DIR não é do head ${HEAD:0:7}: teste de novo, salve em pr-assets/issue-<N>/${HEAD:0:7}/ e rode \`$UPDATE\`."
-      [ "$COMMIT" = "$HEAD" ] && [[ "$HEAD" == "$SHA7"* ]] && echo "ok: prints de $DIR são do head"
+      AGAIN="teste de novo, salve em pr-assets/issue-<N>/${HEAD:0:7}/ e rode \`$UPDATE\`."
+      if [[ "$COMMIT" != "$SHA7"* ]]; then
+        fail "A pasta $DIR não bate com o commit ${COMMIT:0:7} do print_sizes.txt: $AGAIN"
+      elif [ "$COMMIT" = "$HEAD" ]; then
+        echo "ok: prints de $DIR são do head"
+      elif prints_valid "$COMMIT" "$HEAD"; then
+        echo "ok: prints de $DIR (${COMMIT:0:7}) valem para o head: depois deles só mudou docs"
+      else
+        fail "Os prints de $DIR são do commit ${COMMIT:0:7}, e o código mudou até o head ${HEAD:0:7}: $AGAIN"
+      fi
     fi
   fi
 fi

@@ -108,79 +108,83 @@ check "nenhuma issue criada nos erros" test "$(count 'API POST repos/acme/proj/i
 check "só rotas repos/acme/proj e nada de GraphQL" no_graphql
 
 echo "task-status.sh"
+: > "$GH_LOG"
 ./scripts/task-status.sh 3 doing >/dev/null
 check "status doing no roadmap" test "$(rows | sed -n 2p)" = "2|#3|[feat] C|doing|specs/c.md|"
-check "label status:doing na issue" test "$(jq -c '.[] | select(.number == 3) | [.labels[].name] | sort' "$GH_STATE/issues.json")" = '["status:doing","type:feature"]'
-./scripts/task-status.sh 3 review >/dev/null
-check "review tira a label" test "$(jq -c '.[] | select(.number == 3) | [.labels[].name]' "$GH_STATE/issues.json")" = '["type:feature"]'
+./scripts/task-status.sh 3 done >/dev/null
+check "status done no roadmap" test "$(rows | sed -n 2p)" = "2|#3|[feat] C|done|specs/c.md|"
+check "review não é status do roadmap" bash -c '! ./scripts/task-status.sh 3 review'
 check "issue fora do roadmap falha" bash -c '! ./scripts/task-status.sh 77 doing'
 check "status inválido falha" bash -c '! ./scripts/task-status.sh 3 feito'
-check "sem board.conf não chama o Projects" test "$(count '^gh project')" = 0
-check "só rotas repos/acme/proj e nada de GraphQL" no_graphql
+check "sem label nem API: task-status não chama o GitHub" test "$(count '^API'):$(count '^gh project')" = "0:0"
 printf 'OWNER=acme\nPROJECT_NUMBER=7\n' > scripts/board.conf
-./scripts/task-status.sh 3 doing >/dev/null
-check "com board.conf mas sem acesso ao Projects (nuvem), não sincroniza" test "$(count 'project item-edit')" = 0
+o="$(./scripts/task-status.sh 3 doing)"
+check "sem acesso ao Projects (nuvem): avisa e segue" grep -qF "board não sincronizado; rode ./scripts/sync-board.sh localmente" <<<"$o"
+check "sem acesso ao Projects, não mexe no board" test "$(count 'project item-edit')" = 0
 GH_LOCAL=1 ./scripts/task-status.sh 3 doing >/dev/null
 check "com acesso ao Projects (local), sincroniza" test "$(count 'project item-edit')" -gt 0
+rm scripts/board.conf
 
 echo "open-pr.sh"
 setup pr
 n="$(./scripts/new-issue.sh --title "[feat] Login" --body-file "$(body auth)" --milestone M1 --labels type:feature)"
 git commit -qam "roadmap" && git push -q
+git worktree add -q --orphan -b pr-assets "$WORK/assets" 2>/dev/null || { git switch -q --orphan pr-assets && git switch -q -; }
+(cd "$WORK/assets" && git commit -q --allow-empty -m pr-assets && git push -q origin pr-assets)
+# Prints em pr-assets/issue-<n>/<pasta>/ com "commit: <sha>". assets <pasta> <sha>
+assets() { (cd "$WORK/assets" && mkdir -p "issue-$n/$1" && printf 'commit: %s\nac-f1-01.png  1x1  %064d\n' "$2" 0 > "issue-$n/$1/print_sizes.txt" \
+  && git add -A && git commit -qm "prints $1" && git push -q origin pr-assets); }
 git switch -qc "task/$n-login"
 ./scripts/task-status.sh "$n" doing >/dev/null
 mkdir -p docs/specs && echo "# F1" > docs/specs/auth.md && echo app > app.txt
 git add -A && git commit -qm "Login"
-./scripts/task-status.sh "$n" review >/dev/null
-git commit -qam "review" && git push -qu origin "task/$n-login"
-HEAD_SHA="$(git rev-parse HEAD)"
+CODE_SHA="$(git rev-parse HEAD)"
+./scripts/task-status.sh "$n" done >/dev/null
+git commit -qam "Marca #$n como done no roadmap" && git push -qu origin "task/$n-login"
+DONE_SHA="$(git rev-parse HEAD)"
 echo "Tela de login." > "$GH_STATE/summary.md"
 printf 'PASS login\n' > "$GH_STATE/tests.txt"
-check "sem prints do head e sem --prints falha antes de criar" \
+check "sem prints que valham e sem --prints falha antes de criar" \
   bash -c "! ./scripts/open-pr.sh $n --summary-file $GH_STATE/summary.md --tests-file $GH_STATE/tests.txt"
 check "sem --tests nem --tests-file falha" bash -c "! ./scripts/open-pr.sh $n --summary-file $GH_STATE/summary.md --prints 'n/a: x'"
 check "nenhum PR criado nos erros" test "$(count 'API POST repos/acme/proj/pulls$')" = 0
-# Prints do head na pr-assets.
-git worktree add -q --orphan -b pr-assets "$WORK/assets" 2>/dev/null || { git switch -q --orphan pr-assets && git switch -q -; }
-(cd "$WORK/assets" && mkdir -p "issue-$n/${HEAD_SHA:0:7}" && echo png > "issue-$n/${HEAD_SHA:0:7}/ac-f1-01.png" \
-  && git add -A && git commit -qm prints && git push -q origin pr-assets)
+# /qa tirou os prints no commit de código; o commit do done veio depois (só docs).
+assets "${CODE_SHA:0:7}" "$CODE_SHA"
 url="$(./scripts/open-pr.sh "$n" --tests-file "$GH_STATE/tests.txt" < "$GH_STATE/summary.md")"
-check "imprime a URL do PR" test "$url" = "https://github.com/acme/proj/pull/$((n + 1))"
+PR=$((n + 1))
+FINAL_SHA="$(git rev-parse HEAD)"
+check "imprime a URL do PR" test "$url" = "https://github.com/acme/proj/pull/$PR"
 check "título da issue e branches" test "$(jq -c '.[0] | [.title, .head.ref, .base.ref]' "$GH_STATE/pulls.json")" \
   = "[\"[feat] Login\",\"task/$n-login\",\"main\"]"
 pr_body="$(jq -r '.[0].body' "$GH_STATE/pulls.json")"
 has_line() { grep -qxF -- "$1" <<<"$pr_body"; }
 check "corpo: Closes" has_line "Closes #$n"
 check "corpo: spec atualizada na branch" has_line "**Spec:** docs/specs/auth.md (atualizada)"
-check "corpo: Head de 40 caracteres" has_line "**Head:** $HEAD_SHA"
 check "corpo: resumo" has_line "Tela de login."
 check "corpo: AC da issue" test "$(grep -c '^- \[ \] AC-F1-0[12]' <<<"$pr_body")" = 2
-check "corpo: saída dos testes + sha curto" test "$(has_line 'PASS login' && grep -c "git rev-parse --short HEAD\`: ${HEAD_SHA:0:7}" <<<"$pr_body")" = 1
-check "corpo: pasta de prints do head" grep -qF "pr-assets/issue-$n/${HEAD_SHA:0:7}/" <<<"$pr_body"
+check "corpo: saída dos testes + sha curto" test "$(has_line 'PASS login' && grep -c "git rev-parse --short HEAD\`: ${DONE_SHA:0:7}" <<<"$pr_body")" = 1
+check "corpo: prints do commit de código (só docs depois)" grep -qF "pr-assets/issue-$n/${CODE_SHA:0:7}/" <<<"$pr_body"
 check "corpo: Registro" test "$(has_line '- Testado por: usuário + Claude' && grep -c '^- Arquivos alterados: .*`app.txt`' <<<"$pr_body")" = 1
 check "corpo: sem placeholders do template" bash -c '! grep -qE "<sha de 40|AC-\.\.\.|^pr-assets/issue-<N>|saída real" <<<"$0"' "$pr_body"
 check "corpo: Tipo código" has_line "**Tipo:** código"
-check "sem commit depois de abrir o PR (head = commit aprovado)" test "$(git rev-parse HEAD):$(git rev-parse '@{u}')" = "$HEAD_SHA:$HEAD_SHA"
-check "coluna PR fica vazia até o done" test "$(rows)" = "1|#$n|[feat] Login|review|specs/auth.md|"
-check "label status:doing removida" test "$(jq -c '.[0].labels | map(.name)' "$GH_STATE/issues.json")" = '["type:feature"]'
+check "número do PR na coluna PR, com status done" test "$(rows)" = "1|#$n|[feat] Login|done|specs/auth.md|#$PR"
+check "commit 'Registra PR' só no roadmap, com push" \
+  test "$(git log -1 --format=%s):$(git diff --name-only HEAD~1 HEAD):$(git rev-list --count '@{u}..HEAD')" = "Registra PR #$PR no roadmap:docs/roadmap.md:0"
+check "Head do corpo = head depois do commit do PR" has_line "**Head:** $FINAL_SHA"
 url2="$(./scripts/open-pr.sh "$n" </dev/null)"
-check "segunda execução não abre outro PR" test "$url2:$(count 'API POST repos/acme/proj/pulls$')" = "$url:1"
+check "segunda execução não abre outro PR nem faz commit" \
+  test "$url2:$(count 'API POST repos/acme/proj/pulls$'):$(git rev-parse HEAD)" = "$url:1:$FINAL_SHA"
 check "só rotas repos/acme/proj e nada de GraphQL" no_graphql
 
 echo "pr-gate.sh (CA-C1)"
-PR=$((n + 1))
 # Evento pull_request montado a partir do PR simulado.
 event() { gh api "repos/acme/proj/pulls/$PR" 2>/dev/null | jq '{pull_request: (. + {base: {ref: "main"}})}' > "$GH_STATE/event.json"; }
 gate() { GITHUB_EVENT_PATH="$GH_STATE/event.json" ./scripts/pr-gate.sh; }
-assets() { (cd "$WORK/assets" && mkdir -p "issue-$n/$1" && printf 'commit: %s\nac-f1-01.png  1x1  %064d\n' "$2" 0 > "issue-$n/$1/print_sizes.txt" \
-  && git add -A && git commit -qm "prints $1" && git push -q origin pr-assets); }
-assets "${HEAD_SHA:0:7}" "$HEAD_SHA"
 event
-check "passa quando Head e prints batem com o head" gate
+check "passa: prints do commit de código, depois só docs (done + Registra PR)" gate
 o="$(gate 2>&1 || true)"
-check "imprime o que conferiu" grep -q "ok: prints de pr-assets/issue-$n/${HEAD_SHA:0:7}/ são do head" <<<"$o"
-echo "mais código" >> app.txt && git commit -qam "Corrige login" && git push -q
-NEW_SHA="$(git rev-parse HEAD)"
+check "diz que os prints valem porque só mudou docs" grep -q "ok: prints de pr-assets/issue-$n/${CODE_SHA:0:7}/ (${CODE_SHA:0:7}) valem para o head" <<<"$o"
+echo "detalhe" >> docs/specs/auth.md && git commit -qam "Ajusta spec" && git push -q
 event
 o="$(gate 2>&1 || true)"
 check "falha com Head divergente depois de um push" grep -q "::error::Head do corpo desatualizado" <<<"$o"
@@ -188,34 +192,42 @@ check "a mensagem diz para rodar open-pr.sh --update" grep -qF "./scripts/open-p
 old_body="$(jq -r --argjson p "$PR" '.[] | select(.number == $p) | .body' "$GH_STATE/pulls.json")"
 warn="$(./scripts/open-pr.sh --update "$PR" 2>&1 >/dev/null)"
 new_body="$(jq -r --argjson p "$PR" '.[] | select(.number == $p) | .body' "$GH_STATE/pulls.json")"
-check "--update reescreve o Head" grep -qxF "**Head:** $NEW_SHA" <<<"$new_body"
+check "--update reescreve o Head" grep -qxF "**Head:** $(git rev-parse HEAD)" <<<"$new_body"
 check "--update não mexe no resto do corpo" test "$(diff <(echo "$old_body") <(echo "$new_body") | grep -c '^[<>]')" = 2
-check "--update avisa que os prints são de outro commit" grep -q "é de outro commit" <<<"$warn"
+check "--update sem aviso quando só docs mudou" test -z "$warn"
 check "--update usa PATCH em repos/acme/proj/pulls/N" grep -q "^API PATCH repos/acme/proj/pulls/$PR$" "$GH_LOG"
 event
+check "passa depois do --update (prints valem: só docs mudou)" gate
+echo "mais código" >> app.txt && git commit -qam "Corrige login" && git push -q
+NEW_SHA="$(git rev-parse HEAD)"
+warn="$(./scripts/open-pr.sh --update "$PR" 2>&1 >/dev/null)"
+check "--update avisa que os prints não valem depois de mudar código" grep -q "não vale para o head ${NEW_SHA:0:7}" <<<"$warn"
+event
 o="$(gate 2>&1 || true)"
-check "falha com prints de outro commit" grep -q "::error::A pasta de prints pr-assets/issue-$n/${HEAD_SHA:0:7}/ não é do head" <<<"$o"
-assets "${NEW_SHA:0:7}" "$HEAD_SHA"
+check "falha com prints de antes de uma mudança de código" \
+  grep -q "::error::Os prints de pr-assets/issue-$n/${CODE_SHA:0:7}/ são do commit ${CODE_SHA:0:7}, e o código mudou" <<<"$o"
+assets "${NEW_SHA:0:7}" "$NEW_SHA"
 ./scripts/open-pr.sh --update "$PR" >/dev/null 2>&1
 event
+check "--update aponta para a pasta de prints nova" grep -qF "pr-assets/issue-$n/${NEW_SHA:0:7}/" <<<"$(jq -r '.pull_request.body' "$GH_STATE/event.json")"
+check "passa com prints do head novo" gate
+assets "abcdef0" "$NEW_SHA"
+jq '.pull_request.body |= gsub("issue-[0-9]+/[0-9a-f]{7}/"; "issue-'"$n"'/abcdef0/")' "$GH_STATE/event.json" > "$GH_STATE/x" && mv "$GH_STATE/x" "$GH_STATE/event.json"
 o="$(gate 2>&1 || true)"
-check "--update aponta para a pasta de prints do head novo" grep -qF "pr-assets/issue-$n/${NEW_SHA:0:7}/" <<<"$(jq -r '.pull_request.body' "$GH_STATE/event.json")"
-check "falha com print_sizes.txt de outro commit" grep -q "::error::Os prints de pr-assets/issue-$n/${NEW_SHA:0:7}/ são do commit ${HEAD_SHA:0:7}" <<<"$o"
-(cd "$WORK/assets" && rm -rf "issue-$n/${NEW_SHA:0:7}" && git commit -qam x && git push -q origin pr-assets)
-assets "${NEW_SHA:0:7}" "$NEW_SHA"
+check "falha com pasta que não bate com o commit do print_sizes.txt" grep -q "::error::A pasta pr-assets/issue-$n/abcdef0/ não bate com o commit ${NEW_SHA:0:7}" <<<"$o"
 event
-check "passa de novo com prints do head novo" gate
 jq '.pull_request.body |= sub("\\*\\*Head:\\*\\*[^\n]*\n"; "")' "$GH_STATE/event.json" > "$GH_STATE/x" && mv "$GH_STATE/x" "$GH_STATE/event.json"
 o="$(gate 2>&1 || true)"
 check "falha sem a linha Head" grep -q "::error::O corpo do PR não tem a linha \*\*Head:\*\*" <<<"$o"
 check "só rotas repos/acme/proj e nada de GraphQL" no_graphql
 
-echo "task-status.sh done"
-git switch -q main
-jq --argjson p "$PR" 'map(if .number == $p then .state = "closed" | .merged_at = "2026-01-01T00:00:00Z" else . end)' \
-  "$GH_STATE/pulls.json" > "$GH_STATE/x" && mv "$GH_STATE/x" "$GH_STATE/pulls.json"
-./scripts/task-status.sh "$n" done >/dev/null
-check "done grava o PR mergeado que fecha a issue" test "$(rows)" = "1|#$n|[feat] Login|done|specs/auth.md|#$PR"
+echo "merge.sh (D4)"
+o="$(./scripts/merge.sh "$PR" "$NEW_SHA")"
+check "merge squash travado no head, por REST" \
+  grep -qF "BODY PUT repos/acme/proj/pulls/$PR/merge {\"merge_method\":\"squash\",\"sha\":\"$NEW_SHA\"}" "$GH_LOG"
+check "imprime o resultado" grep -q "Pull Request successfully merged" <<<"$o"
+check "head mudou depois da conferência: o merge é recusado" bash -c "! ./scripts/merge.sh $PR $DONE_SHA"
+check "sha curto é recusado antes de chamar a API" bash -c "! ./scripts/merge.sh $PR ${NEW_SHA:0:7}"
 check "só rotas repos/acme/proj e nada de GraphQL" no_graphql
 
 echo "PR só de docs (CA-C4)"
@@ -290,70 +302,86 @@ check "gh api só com rotas repos/acme/proj (gh label/repo/project são locais)"
   bash -c '! grep "^API " "$0" | grep -qv "^API [A-Z]* repos/acme/proj\(/\|$\)"' "$GH_LOG"
 export GH_LOCAL=0
 
-echo "sync-board.sh"
+echo "sync-board.sh (D3)"
 setup sync
 printf 'OWNER=acme\nPROJECT_NUMBER=7\n' > scripts/board.conf
-check "--auto sem acesso ao Projects (nuvem) sai sem erro" ./scripts/sync-board.sh --auto
+o="$(./scripts/sync-board.sh --auto)"
+check "--auto sem acesso ao Projects (nuvem): avisa e sai sem erro" grep -qF "board não sincronizado; rode ./scripts/sync-board.sh localmente" <<<"$o"
 rm scripts/board.conf
 check "--auto sem board.conf sai sem erro" ./scripts/sync-board.sh --auto
 check "sem --auto e sem board.conf falha" bash -c '! ./scripts/sync-board.sh'
 printf 'OWNER=acme\nPROJECT_NUMBER=7\n' > scripts/board.conf
-# #10 todo com PR aberto, #11 todo com status:doing, #12 done (já no board), #13 review com status:doing.
 cat > "$R" <<'MD'
 ## M0 Fundação
 
 | Ordem | Issue | Título | Status | Spec | PR |
 |---|---|---|---|---|---|
 | 1 | #10 | [chore] Setup | todo | — | |
+| 2 | #11 | [feat] Dois | doing | specs/a.md | |
 
 ## M1 MVP
 
 | Ordem | Issue | Título | Status | Spec | PR |
 |---|---|---|---|---|---|
-| 2 | #11 | [feat] Dois | todo | specs/a.md | |
-| 3 | #12 | [feat] Três | done | specs/a.md | #14 |
-| 4 | #13 | [feat] Quatro | review | specs/a.md | |
+| 3 | #12 | [feat] Três | done | specs/a.md | #20 |
+| 4 | #13 | [feat] Quatro | done | specs/a.md | |
+| 5 | #14 | [feat] Cinco | todo | specs/a.md | |
+| 6 | #15 | [feat] Seis | todo | specs/a.md | |
+| 7 | #16 | [feat] Sete | doing | specs/a.md | |
 MD
-echo '[{"number":11,"labels":[{"name":"status:doing"}],"state":"open"},{"number":13,"labels":[{"name":"status:doing"}],"state":"open"}]' > "$GH_STATE/issues.json"
-echo '[{"number":15,"body":"Closes #10\n\n**Spec:** —"}]' > "$GH_STATE/pulls.json"
+# #12 e #15 fechadas; PRs abertos fecham #10 e #16.
+jq -n '[10,11,12,13,14,15,16] | map({number: ., state: (if . == 12 or . == 15 then "closed" else "open" end), labels: []})' > "$GH_STATE/issues.json"
+echo '[{"number":21,"body":"Closes #10\n\n**Spec:** —"},{"number":22,"body":"fixes #16"}]' > "$GH_STATE/pulls.json"
 echo '{"items":[{"id":"PVTI_12","content":{"type":"Issue","repository":"acme/proj","number":12}}]}' > "$GH_STATE/items.json"
 export GH_LOCAL=1
 ./scripts/sync-board.sh >/dev/null
 etapa() { grep -q "item-edit --project-id PVT_1 --id PVTI_$1 --field-id F_ETAPA --single-select-option-id O_$2" "$GH_LOG"; }
-check "PR aberto vira review" etapa 10 review
-check "status:doing vira doing" etapa 11 doing
-check "status:doing vence o status do roadmap" etapa 13 doing
-check "done fica done" etapa 12 done
-check "Ordem vem da coluna Ordem" grep -q 'id PVTI_13 --field-id F_ORDEM --number 4' "$GH_LOG"
-check "só adiciona ao board o que não está lá" test "$(count 'project item-add')" = 3
+check "1. issue fechada → done" etapa 12 done
+check "1. issue fechada vence o status do roadmap (todo)" etapa 15 done
+check "2. PR aberto que fecha a issue → review" etapa 10 review
+check "2. PR aberto vence o doing do roadmap" etapa 16 review
+check "3. roadmap doing sem PR → doing" etapa 11 doing
+check "3. roadmap done sem PR (PR ainda não aberto) → doing" etapa 13 doing
+check "4. senão → todo" etapa 14 todo
+check "Ordem vem da coluna Ordem" grep -q 'id PVTI_16 --field-id F_ORDEM --number 7' "$GH_LOG"
+check "só adiciona ao board o que não está lá" test "$(count 'project item-add')" = 6
+check "sem label: nenhuma rota de labels" bash -c '! grep -q "labels" "$0"' "$GH_LOG"
 check "sem GITHUB_REPOSITORY, usa o remote; só rotas do repo" only_repo_routes
 : > "$GH_LOG"
 GITHUB_REPOSITORY=acme/proj ./scripts/sync-board.sh --auto >/dev/null
-check "--auto com acesso ao Projects sincroniza (fluxo local)" test "$(count 'project item-edit')" = 8
-
-echo "workflow sync-board.yml"
-RUN="$(yq -r '.jobs.sync.steps[1].run' .github/workflows/sync-board.yml)"
-rm scripts/board.conf
-o="$(GH_TOKEN=x bash -ec "$RUN")"
-check "sem board.conf: verde, com aviso" grep -q '^::warning::Sem scripts/board.conf' <<<"$o"
-printf 'OWNER=acme\nPROJECT_NUMBER=7\n' > scripts/board.conf
-o="$(GH_TOKEN='' bash -ec "$RUN")"
-check "sem PROJECT_TOKEN: verde, com aviso" grep -q '^::warning::Secret PROJECT_TOKEN' <<<"$o"
-o="$(GH_TOKEN=x bash -ec "$RUN")"
-check "com os dois: roda o sync" grep -q '^Board sincronizado' <<<"$o"
+check "--auto com acesso ao Projects sincroniza (fluxo local, CA-8)" test "$(count 'project item-edit')" = 14
+export GH_LOCAL=0
 
 echo "docs"
 cd "$SRC"
-REVIEW="$(awk '/^## Ao pedir "revise o PR"/ { s = 1; next } /^## / { s = 0 } s' CLAUDE.md)"
-check "CLAUDE.md tem a seção revise o PR (CA-C5)" test -n "$REVIEW"
+REVIEW="$(cat .claude/agents/revisor.md .claude/commands/revisar.md)"
+check "review: subagente revisor e comando /revisar (CA-C5)" test -n "$REVIEW"
 check "review: todo comando gh é gh api repos/{owner}/{repo}/..." \
-  bash -c '! grep -oE "gh [a-z]+ [^ \`]+" <<<"$0" | grep -vqF "gh api repos/{owner}/{repo}/"' "$REVIEW"
-check "review: posta com event=COMMENT, nunca APPROVE" \
-  bash -c 'grep -q "event=COMMENT" <<<"$0" && ! grep -q "event=APPROVE" <<<"$0"' "$REVIEW"
+  bash -c '! grep -oE "gh [a-z]+ [^ \`]+" <<<"$0" | grep -vqE "gh api \"?repos/\{owner\}/\{repo\}/"' "$REVIEW"
+check "review: posta com -f event=COMMENT, nunca APPROVE nem REQUEST_CHANGES" \
+  bash -c 'grep -q -- "-f event=COMMENT" <<<"$0" && ! grep -qE -- "-f event=(APPROVE|REQUEST_CHANGES)" <<<"$0"' "$REVIEW"
 CHECKLIST="$(awk '/^## Checklist do projeto novo/ { s = 1; next } /^## / { s = 0 } s' README.md)"
 check "README: checklist cita os checks obrigatórios e o open-pr.sh --update (CA-C6)" \
   bash -c 'grep -q "ci" <<<"$0" && grep -q "pr-gate" <<<"$0" && grep -qF "open-pr.sh --update" <<<"$0"' "$CHECKLIST"
 check "README: seção Merge gate" grep -q '^## Merge gate' README.md
+for c in planejar implementar qa abrir-pr revisar corrigir fechar; do
+  f=".claude/commands/$c.md"
+  check "comando /$c com papel, argumentos, passos, onde parar e nunca (CA-D1)" \
+    bash -c 'for h in Papel Argumentos Passos "Onde parar" Nunca; do grep -qx "## $h" "$0" || exit 1; done' "$f"
+done
+check "subagente revisor existe, sem Edit nem Write (CA-D2)" \
+  bash -c 'tools="$(sed -n "s/^tools:[[:space:]]*//p" .claude/agents/revisor.md)"; [ -n "$tools" ] && ! grep -qE "Edit|Write" <<<"$tools"'
+check "revisor proíbe --approve e --request-changes e usa event=COMMENT" \
+  bash -c 'grep -q -- "--approve" .claude/agents/revisor.md && grep -q -- "--request-changes" .claude/agents/revisor.md && grep -q "event=COMMENT" .claude/agents/revisor.md'
+check "/revisar delega ao subagente revisor" grep -q 'subagente `revisor`' .claude/commands/revisar.md
+# Padrões montados em partes para este arquivo não casar com ele mesmo.
+check "nada cita a label, o token nem o workflow de sync removidos (CA-D4)" \
+  bash -c '! grep -rnE "$0" --exclude-dir=.git .' "status"":doing|PROJECT""_TOKEN|sync-board""\.yml"
+check "roadmap só com todo, doing e done (CA-D4)" \
+  bash -c 'grep -q "^Status: \`todo\` · \`doing\` · \`done\`" docs/roadmap.md && ! grep -qE "\| (review) \|" docs/roadmap.md'
+check "AGENTS.md é link simbólico para o CLAUDE.md (CA-D6)" test "$(readlink AGENTS.md)" = CLAUDE.md
+check "comandos e CLAUDE.md citam merge.sh travado no head" \
+  bash -c 'grep -q "merge.sh <pr> <head>" CLAUDE.md && grep -q "merge.sh <pr> <head>" .claude/commands/abrir-pr.md && grep -q "merge.sh <pr> <head>" .claude/commands/corrigir.md'
 # Padrão montado em partes para este arquivo não casar com ele mesmo.
 GRAPHQL_CMDS="gh (issue|pr) (create|edit|view)|gh repo"" view"
 check "nenhum comando gh de GraphQL nos docs e scripts" \

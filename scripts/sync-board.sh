@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
 # Espelha docs/roadmap.md no board do GitHub Projects.
 #
-# O roadmap é a fonte: para cada linha (uma issue), este script garante que a
-# issue está no board e copia para ela a Etapa (todo/doing/review/done) e a Ordem
-# (coluna Ordem do roadmap). Mudanças feitas à mão no board são sobrescritas.
+# Para cada linha do roadmap (uma issue), este script garante que a issue está no
+# board e copia para ela a Etapa e a Ordem (coluna Ordem do roadmap). Mudanças
+# feitas à mão no board são sobrescritas.
 #
-# Etapa = Status do roadmap, com dois ajustes para o que ainda não chegou à main:
-#   - issue com a label status:doing → doing;
-#   - senão, issue todo/doing com PR aberto ("Closes #N" no corpo) → review.
+# O roadmap guarda o destino (todo, doing, done); o GitHub mostra o andamento.
+# Etapa, nesta ordem:
+#   1. issue fechada → done;
+#   2. PR aberto que fecha a issue ("Closes #N" no corpo) → review;
+#   3. roadmap diz doing ou done (ainda sem PR) → doing;
+#   4. senão → todo.
+# Lê o roadmap da working tree atual, então funciona de qualquer branch.
 #
-# Roda no GitHub Action .github/workflows/sync-board.yml (no PR e no merge) e
-# localmente, pelo usuário. Não roda nas sessões do Claude Code na nuvem, que
-# não têm GraphQL (gh project).
+# Usa gh project (GraphQL): só roda onde o board é acessível, como o Claude Code
+# local. Nas sessões na nuvem, use --auto: o script avisa e sai sem erro.
 #
 # Uso: ./scripts/sync-board.sh [--auto]
-#   --auto: se não houver board.conf ou o gh não acessar o Projects, sai sem erro.
+#   --auto: sem board.conf ou sem acesso ao Projects, avisa e sai sem erro.
 # Requer: gh com escopo "project" (gh auth refresh -s project) e jq.
 set -euo pipefail
 
@@ -27,8 +30,9 @@ ROADMAP="$ROOT/docs/roadmap.md"
 AUTO=0
 [ "${1:-}" = --auto ] && AUTO=1
 
+SKIP="board não sincronizado; rode ./scripts/sync-board.sh localmente"
 if [ ! -f "$CONF" ]; then
-  [ "$AUTO" = 1 ] && { echo "Sem scripts/board.conf: sync do board pulado."; exit 0; }
+  [ "$AUTO" = 1 ] && { echo "Sem scripts/board.conf: $SKIP (depois do ./scripts/bootstrap.sh)."; exit 0; }
   echo "Sem scripts/board.conf: rode ./scripts/bootstrap.sh primeiro."
   exit 1
 fi
@@ -36,7 +40,7 @@ fi
 source "$CONF"   # define OWNER e PROJECT_NUMBER
 
 if [ "$AUTO" = 1 ] && ! gh project list --owner "$OWNER" --limit 1 >/dev/null 2>&1; then
-  echo "gh sem acesso ao Projects (sessão na nuvem?): o Action sincroniza o board no PR e no merge."
+  echo "gh sem acesso ao Projects: $SKIP."
   exit 0
 fi
 
@@ -56,8 +60,8 @@ item_id() {
     '.items[] | select(.content.type=="Issue" and .content.repository==$repo and .content.number==$n) | .id' <<<"$ITEMS"
 }
 
-# Rotas REST do repositório: issues com status:doing e issues fechadas por PRs abertos.
-DOING="$(gh api --paginate "repos/$REPO/issues?state=open&labels=status:doing&per_page=100" -q '.[].number')"
+# Rotas REST do repositório: issues fechadas e issues fechadas por PRs abertos.
+CLOSED="$(gh api --paginate "repos/$REPO/issues?state=closed&per_page=100" -q '.[] | select(.pull_request == null) | .number')"
 IN_REVIEW="$(gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" \
   -q '.[].body // "" | [scan("(?i)(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?) #([0-9]+)")[0]] | .[]')"
 has() { grep -qx "$1" <<<"$2"; }
@@ -70,10 +74,14 @@ while IFS='|' read -r _ ordem issue _title status _rest; do
   ordem="$(tr -d ' \t' <<<"$ordem")"
   status="$(tr -d ' \t' <<<"$status")"
 
-  if has "$issue" "$DOING"; then
-    status=doing
-  elif [[ "$status" =~ ^(todo|doing)$ ]] && has "$issue" "$IN_REVIEW"; then
+  if has "$issue" "$CLOSED"; then
+    status=done
+  elif has "$issue" "$IN_REVIEW"; then
     status=review
+  elif [[ "$status" =~ ^(doing|done)$ ]]; then
+    status=doing
+  else
+    status=todo
   fi
 
   item="$(item_id "$issue")"
