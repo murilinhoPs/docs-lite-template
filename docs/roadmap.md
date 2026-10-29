@@ -2,15 +2,16 @@
 
 Status: `todo` · `doing` · `review` · `done`
 
-A ordem das linhas é a ordem de execução. A primeira task `todo` é sempre a próxima.
+A ordem das linhas é a ordem de execução: a primeira linha `todo` é sempre a próxima.
+Cada linha é uma issue. Linhas são criadas por `./scripts/new-issue.sh` e o status muda por
+`./scripts/task-status.sh`; a coluna Ordem é renumerada pelos scripts.
 
 ## M0 Fundação
 
-| # | Task | Status | Issue | PR |
-|---|------|--------|-------|----|
-| 001 | [Setup do projeto](tasks/001-setup-projeto.md) | todo | | |
+| Ordem | Issue | Título | Status | Spec | PR |
+|---|---|---|---|---|---|
 
 ## M1 MVP
 
-| # | Task | Status | Issue | PR |
-|---|------|--------|-------|----|
+| Ordem | Issue | Título | Status | Spec | PR |
+|---|---|---|---|---|---|

@@ -1,7 +1,22 @@
 name: Bug
-description: Algo não funciona como a task ou a spec diz
+description: Algo não funciona como a spec diz
+title: "[bug] "
 labels: ["type:bug"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Depois de criar, inclua a issue no roadmap: `./scripts/new-issue.sh --existing <N> [--after <issue>]`.
+  - type: input
+    id: spec
+    attributes:
+      label: Spec
+      placeholder: docs/specs/auth.md  (F2)
+  - type: input
+    id: area
+    attributes:
+      label: Área
+      placeholder: area:auth
   - type: textarea
     id: passos
     attributes:
@@ -12,7 +27,9 @@ body:
     id: esperado
     attributes:
       label: Esperado vs. obtido
-      description: Cite a task e o critério de aceite violado (ex.: 002, CA-2), se houver
+      description: Cite os critérios de aceite violados (ex.: AC-F2-03)
+    validations:
+      required: true
   - type: textarea
     id: evidencia
     attributes:
