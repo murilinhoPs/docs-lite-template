@@ -300,6 +300,32 @@ GH_COPY_FAILS=1 ./scripts/bootstrap.sh >"$GH_STATE/boot3.out" 2>&1
 check "sem o modelo, cria o board vazio" grep -q '^gh project create' "$GH_LOG"
 check "gh api só com rotas repos/acme/proj (gh label/repo/project são locais)" \
   bash -c '! grep "^API " "$0" | grep -qv "^API [A-Z]* repos/acme/proj\(/\|$\)"' "$GH_LOG"
+
+echo "bootstrap.sh: campos do board copiado (CA-F1)"
+# Roda o bootstrap com o modelo copiado tendo os campos de fields.json. boot_fields <json>
+boot_fields() {
+  rm -f scripts/board.conf
+  echo "$1" > "$GH_STATE/fields.json"
+  : > "$GH_LOG"
+  ./scripts/bootstrap.sh >"$GH_STATE/boot.out" 2>&1 || { ko "bootstrap terminou com erro"; sed "s/^/    /" "$GH_STATE/boot.out"; }
+}
+ETAPA='{"id":"F_ETAPA","name":"Etapa","options":[{"id":"O_todo","name":"todo"},{"id":"O_doing","name":"doing"},{"id":"O_review","name":"review"},{"id":"O_done","name":"done"}]}'
+ORDEM='{"id":"F_ORDEM","name":"Ordem"}'
+boot_fields "{\"fields\":[$ETAPA,$ORDEM]}"
+check "modelo completo: não cria campo nem avisa" \
+  test "$(count 'project field-create'):$(grep -c 'aviso: .*\(Etapa\|Ordem\)' "$GH_STATE/boot.out")" = "0:0"
+boot_fields "{\"fields\":[$ETAPA]}"
+check "sem Ordem: cria Ordem (number)" grep -q '^gh project field-create 8 --owner acme --name Ordem --data-type NUMBER' "$GH_LOG"
+check "sem Ordem: avisa e não mexe na Etapa" \
+  test "$(grep -c 'não tinha o campo Ordem; criei' "$GH_STATE/boot.out"):$(count 'field-create 8 --owner acme --name Etapa')" = "1:0"
+boot_fields "{\"fields\":[$ORDEM]}"
+check "sem Etapa: cria Etapa com todo, doing, review, done" \
+  grep -q '^gh project field-create 8 --owner acme --name Etapa --data-type SINGLE_SELECT --single-select-options todo,doing,review,done' "$GH_LOG"
+check "sem Etapa: avisa das visões que dependem dela" grep -q 'Ajuste na interface as visões que dependem dela' "$GH_STATE/boot.out"
+boot_fields '{"fields":[{"id":"F_ETAPA","name":"Etapa","options":[{"id":"a","name":"todo"},{"id":"b","name":"feito"}]},'"$ORDEM"']}'
+check "Etapa com opções diferentes: só avisa quais faltam" \
+  grep -q 'a Etapa do modelo não tem as opções: doing, review, done. Não alterei' "$GH_STATE/boot.out"
+check "Etapa com opções diferentes: não cria nem altera campo" test "$(count 'project field-create')" = 0
 export GH_LOCAL=0
 
 echo "sync-board.sh (D3)"
@@ -364,6 +390,8 @@ CHECKLIST="$(awk '/^## Checklist do projeto novo/ { s = 1; next } /^## / { s = 0
 check "README: checklist cita os checks obrigatórios e o open-pr.sh --update (CA-C6)" \
   bash -c 'grep -q "ci" <<<"$0" && grep -q "pr-gate" <<<"$0" && grep -qF "open-pr.sh --update" <<<"$0"' "$CHECKLIST"
 check "README: seção Merge gate" grep -q '^## Merge gate' README.md
+check "README: modelo acessível e o que a cópia traz e não traz (CA-F2)" \
+  bash -c 'm="$(awk "/^### Projeto modelo/ { s = 1; next } /^##/ { s = 0 } s" README.md)"; grep -q "Visibility" <<<"$m" && grep -q "BOARD_TEMPLATE=<owner>/<número>" <<<"$m" && grep -q "| A cópia traz | A cópia não traz |" <<<"$m" && grep -q "link" <<<"$m" && grep -q "auto-add" <<<"$m"'
 for c in preparar planejar implementar qa abrir-pr revisar corrigir fechar; do
   f=".claude/commands/$c.md"
   check "comando /$c com papel, argumentos, passos, onde parar e nunca (CA-D1)" \

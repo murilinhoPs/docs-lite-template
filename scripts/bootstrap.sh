@@ -93,10 +93,23 @@ else
       || echo "  aviso: não consegui copiar o projeto modelo $BOARD_TEMPLATE; criando um board vazio"
   fi
   if [ -n "$NUM" ]; then
-    fields="$(gh project field-list "$NUM" --owner "$OWNER" --format json --limit 100 \
-      -q '[.fields[] | select(.name == "Etapa" or .name == "Ordem") | .name] | sort | join(",")')"
-    [ "$fields" = "Etapa,Ordem" ] || echo "  aviso: o modelo $BOARD_TEMPLATE não tem os campos Etapa e Ordem; o sync vai falhar"
     echo "  board copiado do modelo $BOARD_TEMPLATE: projeto #$NUM (com as visões)"
+    # O sync precisa de Etapa (todo, doing, review, done) e Ordem (number): cria o que faltar.
+    FIELDS="$(gh project field-list "$NUM" --owner "$OWNER" --format json --limit 100)"
+    if ! jq -e '.fields[] | select(.name == "Ordem")' <<<"$FIELDS" >/dev/null; then
+      gh project field-create "$NUM" --owner "$OWNER" --name "Ordem" --data-type NUMBER >/dev/null
+      echo "  aviso: o modelo não tinha o campo Ordem; criei (number)"
+    fi
+    if ! jq -e '.fields[] | select(.name == "Etapa")' <<<"$FIELDS" >/dev/null; then
+      gh project field-create "$NUM" --owner "$OWNER" --name "Etapa" \
+        --data-type SINGLE_SELECT --single-select-options "todo,doing,review,done" >/dev/null
+      echo "  aviso: o modelo não tinha o campo Etapa; criei (todo, doing, review, done)."
+      echo "         Ajuste na interface as visões que dependem dela (Board agrupado por Etapa)."
+    else
+      missing="$(jq -r '[.fields[] | select(.name == "Etapa") | .options[]?.name] as $o
+        | ["todo", "doing", "review", "done"] - $o | join(", ")' <<<"$FIELDS")"
+      [ -z "$missing" ] || echo "  aviso: a Etapa do modelo não tem as opções: $missing. Não alterei; acrescente-as na interface (o sync avisa ao encontrar uma Etapa sem opção)."
+    fi
   else
     NUM="$(gh project create --owner "$OWNER" --title "$TITLE" --format json -q .number)"
     gh project field-create "$NUM" --owner "$OWNER" --name "Etapa" \

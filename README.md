@@ -81,9 +81,7 @@ linha dela no roadmap, branch `pr-assets`, worktree de prints, squash com títul
 ruleset da `main`. Pode rodar de novo: ele pula o que já existe (rode de novo depois de preencher
 a tabela Features, para criar as `area:*`).
 
-O projeto modelo é `murilinhoPs/2`. Para usar outro: `BOARD_TEMPLATE=<owner>/<número> ./scripts/bootstrap.sh`.
-O modelo precisa ter o campo `Etapa` (single select com `todo`, `doing`, `review`, `done`) e o
-campo `Ordem` (number); as visões vêm junto na cópia.
+O board é uma cópia do projeto modelo `murilinhoPs/2` (veja "Board → Projeto modelo").
 
 ## Board
 
@@ -91,6 +89,39 @@ O board é um espelho: `./scripts/sync-board.sh` copia a Ordem do roadmap e calc
 issue, nesta ordem: issue fechada → `done`; PR aberto com `Closes #N` → `review`; roadmap `doing`
 ou `done` sem PR → `doing`; senão `todo`. Ele lê o roadmap da working tree, então funciona de
 qualquer branch.
+
+### Projeto modelo
+
+O `bootstrap.sh` cria o board copiando um projeto modelo (`gh project copy`), por padrão o
+[`murilinhoPs/2`](https://github.com/users/murilinhoPs/projects/2). Para usar outro:
+`BOARD_TEMPLATE=<owner>/<número> ./scripts/bootstrap.sh` (`BOARD_TEMPLATE=` vazio não copia e
+cria um board sem visões).
+
+**O modelo precisa estar acessível.** A cópia só funciona se quem roda o bootstrap consegue ver
+o projeto modelo. Para usar o template em outra conta, o projeto 2 precisa ser público (no
+projeto: Settings → Visibility → Public), ou a pessoa cria o próprio modelo e usa
+`BOARD_TEMPLATE=<owner>/<número>`. Se a cópia falhar, o bootstrap cria um board vazio (com os
+campos, sem as visões) e avisa.
+
+| A cópia traz | A cópia não traz |
+|---|---|
+| Visões (Board, Backlog, Roadmap, com agrupamento e ordenação) | Itens (issues, PRs e rascunhos) |
+| Campos personalizados (Etapa, Ordem) | Colaboradores |
+| Workflows configurados, exceto o auto-add | O link com repositórios (o bootstrap faz o `link` depois) |
+| Insights | |
+
+**O que o modelo precisa ter para o sync funcionar:**
+
+- campo `Etapa`, single select com as opções `todo`, `doing`, `review` e `done`;
+- campo `Ordem`, number;
+- visões **Board** (colunas por Etapa), **Backlog** (tabela ordenada por Ordem) e **Roadmap**
+  (agrupado por Milestone).
+
+Se o modelo copiado não tiver `Ordem`, o bootstrap cria o campo e avisa. Sem `Etapa`, ele cria
+com as quatro opções e avisa que as visões que dependem dela precisam ser ajustadas na interface.
+Se a `Etapa` existir sem alguma das quatro opções, ele não altera o campo: só avisa quais faltam.
+
+### Sync
 
 O sync usa `gh project`, então só roda onde o board é acessível (Claude Code local, com
 `gh auth refresh -s project`). Os comandos e o `task-status.sh` chamam `./scripts/sync-board.sh --auto`:
