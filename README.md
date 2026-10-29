@@ -32,7 +32,8 @@ Ciclo de uma issue:
 2. Você testa contra os critérios de aceite.
 3. (Opcional) "Teste você também" → o Claude testa e salva prints em `pr-assets/issue-<N>/<sha7>/`.
 4. "Pode abrir o PR" → status `review`, push da branch e PR com `Closes #N`, head e AC.
-5. Você faz o squash merge.
+5. (Opcional) "Revise o PR" → o Claude posta um review (`COMMENT`) com bloqueantes, deveria e nits.
+6. Com `ci` e `pr-gate` verdes no head, você faz o squash merge.
 
 ---
 
@@ -88,11 +89,36 @@ O `GITHUB_TOKEN` padrão do Action não acessa Projects de usuário, então ele 
 Sem `scripts/board.conf` ou sem o secret, o Action termina verde com um aviso: o template
 recém-criado não fica com CI vermelho.
 
+## Merge gate
+
+A aprovação ("pode abrir o PR") vale para um head específico. O ruleset da `main`, criado pelo
+`bootstrap.sh`, exige dois checks verdes no head e a branch atualizada com a `main` (strict):
+
+| Check | Workflow | O que confere |
+|---|---|---|
+| `pr-gate` | [`pr-gate.yml`](.github/workflows/pr-gate.yml) → `scripts/pr-gate.sh` | O `**Head:**` do corpo do PR é o head do PR; se o corpo cita `pr-assets/issue-<N>/<sha7>/`, o `print_sizes.txt` é desse commit |
+| `ci` | [`ci.yml`](.github/workflows/ci.yml) | Lint e testes da stack (placeholder até a issue de setup); roda em todo PR, sem filtro de paths |
+
+- **Push depois de abrir o PR:** rode `./scripts/open-pr.sh --update <pr>`. Ele reescreve o
+  `**Head:**` e a pasta de prints no corpo, sem mexer no resto. Se o push mudou código, teste de
+  novo (e refaça os prints). O `pr-gate` falha enquanto isso não acontecer.
+- **PR só de docs** (`./scripts/docs-only.sh`: tudo em `docs/` ou `*.md`, exceto o `CLAUDE.md`):
+  dispensa prints e QA. O `ci` termina verde logo no início e o `pr-gate` só confere o `Head:`.
+- **PR aberto à mão** (por exemplo o do `board.conf`): rode `./scripts/open-pr.sh --update <pr>`
+  para pôr a linha `**Head:**` no corpo.
+- **Squash:** o commit na `main` fica `<título do PR> (#N)`, com o corpo do PR como mensagem
+  (inclui o `Closes #X`). Coautoria: `open-pr.sh --coauthor "Nome <email>"` põe o
+  `Co-authored-by:` como última linha do corpo, que é onde o GitHub reconhece o trailer.
+
 ## Checklist do projeto novo
 
 - [ ] Rodar `./scripts/bootstrap.sh` localmente (não funciona numa sessão na nuvem)
 - [ ] Commit de `scripts/board.conf` e `docs/roadmap.md` (issue de setup) gerados pelo bootstrap,
-      numa branch + PR (a `main` fica protegida)
+      numa branch + PR (a `main` fica protegida); no PR, rode `./scripts/open-pr.sh --update <pr>`
+      para o `pr-gate` passar
+- [ ] Conferir em Settings → Rules o ruleset `main protegida` com os checks obrigatórios `ci` e
+      `pr-gate` (strict); repo privado no plano Free não tem rulesets
+- [ ] Na issue de setup, trocar o placeholder do `.github/workflows/ci.yml` pelo lint e testes da stack
 - [ ] Criar o token e o secret `PROJECT_TOKEN` (veja "Sync do board")
 - [ ] Conferir o board: o bootstrap copia o projeto modelo
       [murilinhoPs/projects/2](https://github.com/users/murilinhoPs/projects/2) com as visões

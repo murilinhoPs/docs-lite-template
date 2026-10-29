@@ -2,7 +2,8 @@
 # gh simulado para os testes. Registra cada chamada em $GH_LOG e responde a
 # partir dos JSON em $GH_STATE, imitando uma sessão do Claude Code na nuvem:
 #   - gh api só aceita rotas repos/$GH_REPO/... (as outras dão 403);
-#   - gh project só funciona com GH_PROJECTS=1 (modo local / Action);
+#   - gh project, gh label e gh repo edit só funcionam com GH_LOCAL=1 (Claude Code
+#     local / Action / bootstrap);
 #   - qualquer outro comando (gh issue, gh pr, gh repo...) dá 403 de GraphQL.
 set -euo pipefail
 
@@ -26,8 +27,16 @@ next_number() { local n; n="$(cat "$S/counter")"; echo $((n + 1)) > "$S/counter"
 
 cmd="$1"; shift
 case "$cmd" in
+  label | repo)
+    [ "${GH_LOCAL:-0}" = 1 ] || graphql_403
+    if [ "$cmd" = repo ] && [ "$1" = view ]; then
+      jq -n --arg r "$GH_REPO" '{nameWithOwner: $r}' | out
+      exit 0
+    fi
+    [ "$cmd" = label ] || [ "$1" = edit ] || graphql_403
+    exit 0 ;;
   project)
-    [ "${GH_PROJECTS:-0}" = 1 ] || graphql_403
+    [ "${GH_LOCAL:-0}" = 1 ] || graphql_403
     sub="$1"; shift
     case "$sub" in
       list) echo '{"projects":[]}' | out ;;
@@ -43,7 +52,10 @@ case "$cmd" in
           '.items += [{id: $id, content: {type: "Issue", repository: $repo, number: $n}}]' \
           "$S/items.json" > "$S/tmp" && mv "$S/tmp" "$S/items.json"
         jq -n --arg id "$id" '{id: $id}' | out ;;
-      item-edit) echo '{}' ;;
+      item-edit | link | field-create) echo '{}' ;;
+      create | copy)
+        [ "$sub" != copy ] || [ "${GH_COPY_FAILS:-0}" != 1 ] || { echo "copy falhou" >&2; exit 1; }
+        echo '{"number":8}' | out ;;
       *) echo "project $sub não simulado" >&2; exit 1 ;;
     esac
     exit 0 ;;
@@ -59,6 +71,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     -X | --method) method="$2"; shift 2 ;;
     -f | -F | --field | --raw-field) fields+=("$2"); shift 2 ;;
+    --input) if [ "$2" = - ]; then cat > "$S/last-input.json"; else cp "$2" "$S/last-input.json"; fi; shift 2 ;;
     --paginate) shift ;;
     *) route="$1"; shift ;;
   esac
@@ -66,12 +79,13 @@ done
 [ -n "$method" ] || { [ ${#fields[@]} -gt 0 ] && method=POST || method=GET; }
 
 case "$route" in
-  "repos/$GH_REPO/"*) ;;
+  "repos/$GH_REPO" | "repos/$GH_REPO/"*) ;;
   *) echo "HTTP 403: sessions are bound to their configured repositories ($route)" >&2; exit 1 ;;
 esac
 echo "API $method $route" >> "$GH_LOG"
 
-path="${route#repos/"$GH_REPO"/}"
+path="${route#repos/"$GH_REPO"}"
+path="${path#/}"
 query=""
 [[ "$path" == *\?* ]] && { query="${path#*\?}"; path="${path%%\?*}"; }
 param() { tr '&' '\n' <<<"$query" | sed -n "s/^$1=//p"; }
@@ -91,6 +105,7 @@ for f in "${fields[@]+"${fields[@]}"}"; do
   fi
 done
 echo "$body" > "$S/last-body.json"
+[ "$body" = '{}' ] || echo "BODY $method $route $(jq -c . <<<"$body")" >> "$GH_LOG"
 
 save() { mv "$S/tmp" "$S/$1"; }
 
@@ -127,12 +142,38 @@ case "$method $path" in
     echo '[]' | out ;;
   "GET pulls")
     head="$(param head)"
-    jq --arg h "$head" '[.[] | select($h == "" or .head.label == $h)]' "$S/pulls.json" | out ;;
+    state="$(param state)"
+    jq --arg h "$head" --arg s "${state:-open}" \
+      '[.[] | select(($h == "" or .head.label == $h) and ((.state // "open") == $s or $s == "all"))]' "$S/pulls.json" | out ;;
+  "GET pulls/"*)
+    # head.sha = o que foi enviado por push para a branch do PR.
+    n="${path#pulls/}"
+    ref="$(jq -r --argjson n "$n" '.[] | select(.number == $n) | .head.ref' "$S/pulls.json")"
+    sha="$(git rev-parse "refs/remotes/origin/$ref")"
+    jq -e --argjson n "$n" --arg sha "$sha" '.[] | select(.number == $n) | .head.sha = $sha' "$S/pulls.json" | out ;;
+  "PATCH pulls/"*)
+    n="${path#pulls/}"
+    jq --argjson n "$n" --argjson b "$body" 'map(if .number == $n then . + $b else . end)' \
+      "$S/pulls.json" > "$S/tmp" && save pulls.json
+    jq --argjson n "$n" '.[] | select(.number == $n)' "$S/pulls.json" | out ;;
+  "PATCH ") echo '{}' | out ;;
+  "GET rulesets") { cat "$S/rulesets.json" 2>/dev/null || echo '[]'; } | out ;;
+  "POST rulesets")
+    jq '. + [(input | .id = 51)]' "$S/rulesets.json" "$S/last-input.json" > "$S/tmp" 2>/dev/null \
+      || jq '[.] | map(.id = 51)' "$S/last-input.json" > "$S/tmp"
+    save rulesets.json
+    echo '{"id":51}' | out ;;
+  "PUT rulesets/"*)
+    n="${path#rulesets/}"
+    jq --argjson n "$n" 'map(if .id == $n then (input | .id = $n) else . end)' "$S/rulesets.json" "$S/last-input.json" > "$S/tmp" \
+      && save rulesets.json
+    echo '{}' | out ;;
   "POST pulls")
     n="$(next_number)"
-    jq --argjson n "$n" --argjson b "$body" --arg repo "$GH_REPO" \
+    sha="$(git rev-parse "refs/remotes/origin/$(jq -r .head <<<"$body")")"
+    jq --argjson n "$n" --argjson b "$body" --arg repo "$GH_REPO" --arg sha "$sha" \
       '. += [{number: $n, title: $b.title, body: $b.body, base: {ref: $b.base},
-              head: {ref: $b.head, label: (($repo | split("/")[0]) + ":" + $b.head)},
+              head: {ref: $b.head, label: (($repo | split("/")[0]) + ":" + $b.head), sha: $sha}, state: "open",
               html_url: ("https://github.com/" + $repo + "/pull/" + ($n | tostring))}]' \
       "$S/pulls.json" > "$S/tmp" && save pulls.json
     jq --argjson n "$n" '.[] | select(.number == $n)' "$S/pulls.json" | out ;;

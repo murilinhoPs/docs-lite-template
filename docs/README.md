@@ -32,6 +32,8 @@ comportamento atualiza a spec no mesmo PR.
 - `roadmap.md` manda no board: o Action `.github/workflows/sync-board.yml` copia o roadmap para o
   board no PR, no merge e quando a label `status:doing` muda. Nunca mova cards à mão.
 - Só uma issue em `doing` por vez.
+- Merge só com os checks `ci` e `pr-gate` verdes no head e a branch atualizada com a `main`.
+  PR só de docs (tudo em `docs/` ou `*.md`, exceto o `CLAUDE.md`) dispensa prints e QA.
 - IDs de feature (`F<n>`) e de AC (`AC-F<n>-NN`) nunca são renomeados nem reaproveitados.
 - ADR `Aceita` não é editado: um novo ADR o substitui (`Superada por 0007`).
 - Versão do PRD: git tag `prd-vX.Y` (`git tag prd-v1.0 && git push origin prd-v1.0`). Nunca

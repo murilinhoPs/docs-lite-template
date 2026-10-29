@@ -127,8 +127,9 @@ A partir do README e da PRD, preencha `docs/overview.md`:
    copiado pelo bootstrap).
 4. Faça commit do roadmap atualizado na `setup/docs`, me mostre o resultado e pergunte antes de
    dar push. Com o ok: `git push -u origin setup/docs` e abra o PR com
-   `gh api repos/{owner}/{repo}/pulls -f head=setup/docs -f base=main -f title="[docs] Setup a partir dos docs" -F body=@<corpo.md>`.
-   Eu faço o merge na `main`.
+   `gh api repos/{owner}/{repo}/pulls -f head=setup/docs -f base=main -f title="[docs] Setup a partir dos docs" -F body=@<corpo.md>`
+   e, em seguida, `./scripts/open-pr.sh --update <pr>` para pôr o `**Head:**` no corpo (o check
+   `pr-gate` exige). Eu faço o merge na `main`.
 
 # Ao final
 

@@ -1,0 +1,23 @@
+# Merge gate (scripts/pr-gate.sh): o "**Head:**" do corpo do PR tem de ser o head
+# do PR e os prints citados têm de ser desse commit. Check obrigatório no ruleset
+# da main (bootstrap.sh). Depois de um push, rode ./scripts/open-pr.sh --update <pr>.
+name: PR gate
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Confere head e prints
+        run: ./scripts/pr-gate.sh

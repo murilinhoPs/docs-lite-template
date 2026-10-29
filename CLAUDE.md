@@ -33,6 +33,9 @@ Nas sessões na nuvem não há GraphQL.
 | Pôr no roadmap uma issue que já existe | `./scripts/new-issue.sh --existing <N> [--after <N>]` |
 | Mudar status | `./scripts/task-status.sh <N> <todo\|doing\|review\|done>` |
 | Abrir o PR | `./scripts/open-pr.sh <N> --summary-file <arquivo> ...` |
+| Atualizar Head e prints do PR depois de um push | `./scripts/open-pr.sh --update <pr>` |
+| Ler um PR / os checks do head | `gh api repos/{owner}/{repo}/pulls/<pr>` / `gh api repos/{owner}/{repo}/commits/<head>/check-runs` |
+| Postar um review | `gh api repos/{owner}/{repo}/pulls/<pr>/reviews -f commit_id=<head> -f event=COMMENT -F body=@review.md` |
 | Listar labels | `gh api repos/{owner}/{repo}/labels -q '.[].name'` |
 
 Só rode `./scripts/sync-board.sh` se `scripts/board.conf` existir e `gh project list` funcionar
@@ -43,7 +46,8 @@ sync quando dá.
 
 1. Pegue a primeira linha `todo` do roadmap (ou a issue N pedida). Nunca pule a ordem sem eu pedir.
    Se a linha anterior está `review` e o PR dela já foi mergeado: `git switch main && git pull`
-   e `./scripts/task-status.sh <anterior> done` (essa mudança vai no primeiro commit da branch nova).
+   e `./scripts/task-status.sh <anterior> done` (grava também o número do PR mergeado na coluna PR;
+   essa mudança vai no primeiro commit da branch nova).
 2. Leia a issue (`gh api repos/{owner}/{repo}/issues/<N>`), a spec citada em **Spec:** e os ADRs
    e docs de design citados.
 3. Se a issue citar um AC que não existe na spec, pare e me pergunte.
@@ -56,6 +60,9 @@ sync quando dá.
 8. Pare e me diga: o que mudou, como testar cada AC e o que ficou em aberto.
 
 ## Ao pedir "teste você também" (opcional)
+
+PR só de docs (`./scripts/docs-only.sh`: tudo em `docs/` ou `*.md`, exceto o `CLAUDE.md`)
+dispensa este passo e os prints.
 
 1. Rode o app e verifique cada critério de aceite.
 2. Siga `docs/qa/print-rules.md` e tire um print por AC.
@@ -71,15 +78,53 @@ sync quando dá.
 
 1. `./scripts/task-status.sh <N> review` (tira a label `status:doing`) e commit na mesma branch.
 2. `git push -u origin task/<N>-<slug>`
-3. `./scripts/open-pr.sh <N> --summary-file <resumo.md> [--tests-file <saida.txt> | --tests "n/a: <motivo>"] [--prints "n/a: <motivo>"]`.
+3. `./scripts/open-pr.sh <N> --summary-file <resumo.md> [--tests-file <saida.txt> | --tests "n/a: <motivo>"] [--prints "n/a: <motivo>"] [--coauthor "Nome <email>"]`.
    O script monta o corpo pelo `.github/pull_request_template.md`: `Closes #N`, spec (e se ela
-   mudou na branch), **Head** de 40 caracteres, resumo, AC da issue, testes, pasta de prints do
-   head (`pr-assets/issue-<N>/<sha7>/`, se existir) e Registro. Depois grava o número do PR na
-   coluna PR do roadmap num commit seguinte (`registra PR #M no roadmap`, só `docs/roadmap.md`),
-   dá push e imprime a URL.
+   mudou na branch), **Head** de 40 caracteres, **Tipo** (código / só docs, pelo diff), resumo,
+   AC da issue, testes, pasta de prints do head (`pr-assets/issue-<N>/<sha7>/`, se existir),
+   Registro e, com `--coauthor`, a linha `Co-authored-by:` como última linha. Ele não faz commit
+   depois de abrir o PR: o head do PR é o commit aprovado. Imprime a URL.
 4. Me passe o link do PR.
 
-O merge (squash) é sempre feito por mim.
+O merge (squash) é sempre feito por mim. O commit na `main` fica `<título do PR> (#M)`, com o
+corpo do PR como mensagem (por isso o `Co-authored-by:` precisa ser a última linha).
+
+## Depois que o PR está aberto
+
+O "pode abrir o PR" aprova um head. Os checks obrigatórios `ci` e `pr-gate` precisam estar verdes
+nesse head, e a branch precisa estar atualizada com a `main`.
+
+- Todo push num PR aberto é seguido de `./scripts/open-pr.sh --update <pr>`, que reescreve o
+  **Head** e a pasta de prints no corpo. Se o push mudou código, me avise que o meu teste (e os
+  prints, se houver) precisa ser refeito; o `pr-gate` falha enquanto os prints forem de outro commit.
+- Se o GitHub indicar que a branch está atrás da `main`: `git fetch origin main`,
+  `git rebase origin/main`, `git push --force-with-lease`, `./scripts/open-pr.sh --update <pr>` e
+  me avise (o head mudou, então vale o item acima). Conflito no rebase: pare e me pergunte.
+- `pr-gate` vermelho: leia a mensagem do check (ela diz o que fazer) e corrija; não contorne.
+
+## Ao pedir "revise o PR"
+
+1. Leia só o diff real do head atual: `git fetch origin main <branch>` e
+   `git diff origin/main...<head>`, com `<head>` = `head.sha` de `gh api repos/{owner}/{repo}/pulls/<pr>`.
+   Leia também a issue, a spec e os ADRs citados.
+2. Verifique:
+   - cada AC da issue tem código e teste correspondentes;
+   - a spec foi atualizada se o comportamento mudou;
+   - `pr-gate` e `ci` estão verdes no head (`gh api repos/{owner}/{repo}/commits/<head>/check-runs`);
+   - em PR visual (`type:design` ou com prints), abra cada print e confira o conteúdo contra os
+     AC, não só o tamanho.
+3. Classifique cada achado:
+   - **Bloqueante:** impede o merge. Diga o que corrigir, por quê e em quais arquivos. A correção
+     vai no mesmo PR; depois do push, o review é refeito.
+   - **Deveria:** melhoria que não bloqueia. Vira issue de follow-up só se eu pedir.
+   - **Nit:** estilo ou detalhe. Só é reportado.
+4. Poste o review travado no head:
+   `gh api repos/{owner}/{repo}/pulls/<pr>/reviews -f commit_id=<head> -f event=COMMENT -F body=@review.md`.
+   Sempre `event=COMMENT`: o GitHub não deixa o autor aprovar o próprio PR, e quem decide o merge
+   sou eu.
+5. Me resuma: N bloqueantes, N deveria, N nits, e se você recomenda o merge.
+
+Push novo depois de um review: o review antigo deixa de valer; refaça só se eu pedir.
 
 ## Task nova pedida no meio do caminho
 

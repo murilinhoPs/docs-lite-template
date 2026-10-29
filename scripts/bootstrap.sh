@@ -116,11 +116,10 @@ fi
 if git ls-remote --exit-code --heads origin pr-assets >/dev/null 2>&1; then
   echo "  pr-assets já existe"
 else
-  current="$(git branch --show-current)"
-  git switch --orphan pr-assets
-  git commit --allow-empty -m "pr-assets"
-  git push -u origin pr-assets
-  git switch "$current"
+  # Commit vazio sem pai, sem trocar de branch (o working tree pode ter mudanças,
+  # como o roadmap com a issue de setup).
+  commit="$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "pr-assets")"
+  git push -q origin "$commit:refs/heads/pr-assets"
   echo "  pr-assets criada"
 fi
 
@@ -132,17 +131,21 @@ if [ ! -d "$WT" ]; then
   echo "  worktree em $WT"
 fi
 
-# 7. Só squash merge e apagar branch após merge
+# 7. Só squash merge, apagar branch após merge e formato do squash:
+#    commit na main = "<título do PR> (#N)" com o corpo do PR (Closes #X, Co-authored-by).
 gh repo edit "$REPO" \
   --enable-squash-merge \
   --enable-merge-commit=false \
   --enable-rebase-merge=false \
   --delete-branch-on-merge
-echo "  merge: só squash"
+gh api -X PATCH "repos/$REPO" \
+  -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY >/dev/null
+echo "  merge: só squash, com título e corpo do PR"
 
-# 8. Bloqueia push direto e force push na main (sem exigir aprovação: projeto solo)
-gh api -X POST "repos/$REPO/rulesets" --input - >/dev/null <<'JSON' || echo "  aviso: ruleset não criado (repo privado em plano Free não suporta rulesets; configure em Settings → Rules se disponível)"
-{
+# 8. Ruleset da main: sem push direto nem force push, merge só por PR (sem exigir
+#    aprovação: projeto solo) e com os checks ci e pr-gate verdes no head, com a
+#    branch atualizada com a main (strict). Rodar de novo atualiza o ruleset.
+RULESET='{
   "name": "main protegida",
   "target": "branch",
   "enforcement": "active",
@@ -156,10 +159,22 @@ gh api -X POST "repos/$REPO/rulesets" --input - >/dev/null <<'JSON' || echo "  a
         "require_code_owner_review": false,
         "require_last_push_approval": false,
         "required_review_thread_resolution": false
+    } },
+    { "type": "required_status_checks", "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [ { "context": "ci" }, { "context": "pr-gate" } ]
     } }
   ]
-}
-JSON
+}'
+RULESET_ID="$(gh api "repos/$REPO/rulesets" -q '.[] | select(.name == "main protegida") | .id' 2>/dev/null | head -n1 || true)"
+if [ -n "$RULESET_ID" ]; then
+  gh api -X PUT "repos/$REPO/rulesets/$RULESET_ID" --input - >/dev/null <<<"$RULESET" \
+    && echo "  ruleset da main atualizado (checks ci e pr-gate, strict)"
+elif gh api -X POST "repos/$REPO/rulesets" --input - >/dev/null <<<"$RULESET"; then
+  echo "  ruleset da main criado (checks ci e pr-gate, strict)"
+else
+  echo "  aviso: ruleset não criado (repo privado em plano Free não suporta rulesets; configure em Settings → Rules se disponível)"
+fi
 
 # 9. Primeira sincronização
 [ -f "$CONF" ] && ./scripts/sync-board.sh || true

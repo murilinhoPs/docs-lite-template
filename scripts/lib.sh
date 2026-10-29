@@ -130,3 +130,28 @@ board_available() {
   # shellcheck source=/dev/null
   (source "$conf" && gh project list --owner "$OWNER" --limit 1 >/dev/null 2>&1)
 }
+
+# Sai com 0 se o diff base...head é "só docs": todo arquivo está em docs/ ou é *.md,
+# exceto o CLAUDE.md (muda o processo, então conta como código). docs_only <base> <head>
+docs_only() {
+  local files f
+  files="$(git diff --name-only "$1...$2")" || return 2
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    [ "$f" != CLAUDE.md ] || return 1
+    case "$f" in
+      docs/* | *.md) ;;
+      *) return 1 ;;
+    esac
+  done <<<"$files"
+}
+
+# Sha de 40 caracteres da linha "**Head:**" do corpo do PR, ou vazio.
+body_head() {
+  grep -m1 -E '^\*\*Head:\*\*' <<<"$1" | grep -oE '[0-9a-f]{40}' | head -n1 || true
+}
+
+# Pasta de prints citada no corpo do PR ("pr-assets/issue-<N>/<sha7>/"), ou vazio.
+body_prints() {
+  grep -oE 'pr-assets/issue-[0-9]+/[0-9a-f]{7,40}/' <<<"$1" | head -n1 || true
+}

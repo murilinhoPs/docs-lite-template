@@ -39,9 +39,12 @@ cd ../<repo>-assets/issue-<N>/<sha7>
   done; } > print_sizes.txt
 ```
 
-O PR aponta para a pasta do head final (seção Prints do PR template). No review, confira se
-o `commit:` é o **Head** do corpo do PR. O único commit que pode vir depois dele é o
-`registra PR #N no roadmap`, feito pelo `open-pr.sh`, que só toca `docs/roadmap.md`.
+O PR aponta para a pasta do head final (seção Prints do PR template). O check `pr-gate`
+confere que o `commit:` do `print_sizes.txt` é o head do PR e que o `<sha7>` da pasta é prefixo
+dele. Push depois dos prints? Teste de novo, salve numa pasta nova e rode
+`./scripts/open-pr.sh --update <pr>`.
+
+PR só de docs (`./scripts/docs-only.sh`) não precisa de prints.
 
 ## Método por plataforma
 

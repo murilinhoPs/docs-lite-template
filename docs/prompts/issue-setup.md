@@ -18,6 +18,7 @@ Projeto rodando localmente com a stack definida em `docs/overview.md`.
 ## Critérios de aceite
 - [ ] AC-SETUP-01: o projeto roda com um único comando, documentado
 - [ ] AC-SETUP-02: a tela inicial (ou endpoint de health) responde sem erro
+- [ ] AC-SETUP-03: `.github/workflows/ci.yml` roda lint e testes da stack
 
 ## Notas técnicas
 Registrar a escolha de stack em `docs/adr/0001-*.md` (proponha antes de criar).

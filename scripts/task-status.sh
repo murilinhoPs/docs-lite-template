@@ -3,7 +3,8 @@
 #
 # Também mantém a label status:doing na issue (só API REST do repositório):
 # adiciona no doing e remove nos outros. É ela que faz o board mostrar "doing"
-# enquanto a branch da task ainda não subiu. Se o board for acessível daqui
+# enquanto a branch da task ainda não subiu. No done, grava na coluna PR o PR
+# mergeado que fecha a issue ("Closes #N"). Se o board for acessível daqui
 # (Claude Code local), roda o sync-board.sh; senão o Action sincroniza.
 #
 # Uso: ./scripts/task-status.sh <issue> <todo|doing|review|done>
@@ -29,6 +30,17 @@ if [ "$STATUS" = doing ]; then
 else
   # 404 quando a issue não tem a label: não é erro.
   gh api -X DELETE "repos/$REPO/issues/$N/labels/status:doing" >/dev/null 2>&1 || true
+fi
+
+if [ "$STATUS" = done ] && [ -z "$(roadmap_get "$ROADMAP" "$N" pr)" ]; then
+  PR="$(gh api --paginate "repos/$REPO/pulls?state=closed&per_page=100" \
+    -q ".[] | select(.merged_at != null and ((.body // \"\") | test(\"(?i)(close[sd]?|fix(e[sd])?|resolve[sd]?) #$N([^0-9]|\$)\"))) | .number" | head -n1)"
+  if [ -n "$PR" ]; then
+    roadmap_set "$ROADMAP" "$N" pr "#$PR"
+    echo "  PR #$PR na coluna PR"
+  else
+    echo "  aviso: não achei PR mergeado com \"Closes #$N\"; preencha a coluna PR à mão"
+  fi
 fi
 
 if board_available; then
