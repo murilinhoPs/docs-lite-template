@@ -2,16 +2,24 @@
 
 A documentação vive em `docs/`. Leia `docs/README.md` e `docs/overview.md` antes de qualquer task.
 
+`docs/roadmap.md` é a referência global: ordem, milestone e status de cada task. O board do
+GitHub Projects é só um espelho dele. Toda vez que você mudar o roadmap (task nova, status,
+número de issue, ordem), rode `./scripts/sync-board.sh` logo depois. Nunca mova cards no board
+à mão: o próximo sync desfaz.
+
 ## Ao pedir "próxima task" ou "implemente a task NNN"
 
 1. Pegue a primeira task `todo` em `docs/roadmap.md` (ou a NNN pedida). Nunca pule a ordem sem eu pedir.
 2. Antes de começar, se a task anterior está `review` e o PR dela já foi mergeado:
    `git switch main && git pull`, depois marque-a como `done` no roadmap, com o número do PR.
+   (Essa atualização vai no primeiro commit da branch da task nova.)
 3. Leia `docs/tasks/NNN-*.md` e os ADRs e docs de design que ela cita.
-4. Crie a issue de registro:
-   `gh issue create --title "NNN · <título>" --body "Spec: docs/tasks/NNN-<slug>.md" --milestone "<milestone>"`
+4. Se a task ainda não tem issue no roadmap, crie a issue de registro com as labels do frontmatter:
+   `gh issue create --title "NNN · <título>" --body "Spec: docs/tasks/NNN-<slug>.md" --milestone "<milestone>" --label "<labels>"`
+   Se já tem, use a existente.
 5. Crie a branch a partir da main atualizada: `git switch -c task/NNN-<slug>`
-6. Marque a task como `doing` no roadmap e no frontmatter, com o número da issue.
+6. Marque a task como `doing` no roadmap e no frontmatter, com o número da issue, e rode
+   `./scripts/sync-board.sh`.
 7. Implemente seguindo os critérios de aceite. Não faça nada fora do escopo.
 8. Faça commits locais. NÃO dê push e NÃO abra PR.
 9. Pare e me diga: o que mudou, como testar cada CA e o que ficou em aberto.
@@ -22,6 +30,9 @@ A documentação vive em `docs/`. Leia `docs/README.md` e `docs/overview.md` ant
 2. Siga `docs/qa/print-rules.md` e tire um print por CA.
 3. Salve em `task-NNN/` na branch `pr-assets`, usando o worktree `../<repo>-assets`
    (crie com `git worktree add ../<repo>-assets pr-assets` se não existir).
+   Junto, gere `task-NNN/print_sizes.txt` no formato de `docs/qa/print-rules.md`
+   (hash do commit testado + sha256 de cada print). Se você testar de novo depois de uma
+   correção, substitua os prints e o `print_sizes.txt`.
    Faça push só da branch `pr-assets`.
 4. Marque `prints: true` no frontmatter da task.
 5. Me diga quais CAs passaram e quais falharam, com os caminhos dos prints.
@@ -30,7 +41,7 @@ A documentação vive em `docs/`. Leia `docs/README.md` e `docs/overview.md` ant
 
 1. Preencha a seção Registro do arquivo da task.
 2. Mude o status para `review` no roadmap e no frontmatter.
-3. Commit dessa atualização de docs na mesma branch.
+3. Commit dessa atualização de docs na mesma branch e rode `./scripts/sync-board.sh`.
 4. `git push -u origin task/NNN-<slug>`
 5. `gh pr create` com título `NNN · <título>` e corpo seguindo `.github/pull_request_template.md`:
    - `Closes #<issue>`
@@ -68,7 +79,8 @@ Regras de importação:
 - ADR importado entra como `proposed`, a menos que eu diga que já está aceito.
 - Milestone novo entra no `roadmap.md`, na tabela do `prd.md` e na lista do `scripts/bootstrap.sh`.
 - Um doc pode virar vários destinos; vários docs podem virar um. Trechos sem destino, pergunte.
-- Commit local único, sem push.
+- Tasks importadas recebem `labels` no frontmatter (`type:feature` por padrão).
+- Commit local único, sem push. Issues e board só depois do merge (o sync roda quando as issues existirem).
 
 ## Regras gerais
 
@@ -77,3 +89,8 @@ Regras de importação:
 - Nunca dê push na `main`.
 - Task nova pedida no meio do caminho: crie o arquivo em `docs/tasks/` com o próximo número livre
   e insira a linha no roadmap na posição que eu indicar.
+- Bug reportado numa issue `type:bug`: se for da task em andamento, corrija nela; senão, crie uma
+  task nova com `labels: [type:bug]` apontando para essa issue (coluna Issue do roadmap) e pergunte
+  onde ela entra na ordem.
+- Labels: `type:*` sempre; `prio:*` só se eu pedir; `area:*` conforme as que existirem no repo
+  (`gh label list`). Não crie labels novas sem perguntar.

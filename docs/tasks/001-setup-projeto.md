@@ -4,6 +4,7 @@ title: Setup do projeto
 milestone: M0
 status: todo
 issue: ""
+labels: [type:chore]
 branch: task/001-setup-projeto
 prints: false
 ---

@@ -1,0 +1,20 @@
+name: Bug
+description: Algo não funciona como a task ou a spec diz
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Esperado vs. obtido
+      description: Cite a task e o critério de aceite violado (ex.: 002, CA-2), se houver
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Prints ou logs
+      description: Arraste a imagem aqui (fica como anexo da issue, não vai para o repo)

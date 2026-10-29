@@ -1,0 +1,17 @@
+name: Task
+description: Registro de uma task de docs/tasks/ (o conteúdo vive no arquivo, não aqui)
+title: "NNN · "
+labels: ["type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A issue é só registro. Objetivo, escopo e critérios de aceite ficam em `docs/tasks/NNN-<slug>.md`.
+        Depois de criar, anote o número da issue no roadmap e rode `./scripts/sync-board.sh`.
+  - type: input
+    id: spec
+    attributes:
+      label: Arquivo da task
+      placeholder: docs/tasks/002-tela-login.md
+    validations:
+      required: true

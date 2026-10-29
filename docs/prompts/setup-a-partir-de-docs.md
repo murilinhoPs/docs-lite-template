@@ -15,13 +15,13 @@ Como usar:
 ````markdown
 # Contexto
 
-Este repositório segue o template docs-first-lite:
-https://github.com/murilinhoPs/docs-first-lite
+Este repositório segue o template docs-lite-template:
+https://github.com/murilinhoPs/docs-lite-template
 
 Se o projeto não foi criado a partir dele, ou se faltar algum arquivo (`CLAUDE.md`, `docs/`,
 `.claude/skills/`, `scripts/bootstrap.sh`, `.github/pull_request_template.md`),
 copie do template antes de começar:
-`gh repo clone murilinhoPs/docs-first-lite /tmp/docs-first-lite`
+`gh repo clone murilinhoPs/docs-lite-template /tmp/docs-lite-template`
 e traga para cá só o que faltar, sem sobrescrever nada que já exista.
 
 Antes de qualquer coisa, leia:
@@ -102,21 +102,19 @@ Eu faço o merge na `main`.
 # Fase 4: GitHub (só depois do merge da `setup/docs`)
 
 1. `git switch main && git pull`.
-2. **Milestones:** rode `./scripts/bootstrap.sh`. Ele cria os milestones que faltam, a
-   branch `pr-assets` e as proteções. Confirme com
-   `gh api repos/{owner}/{repo}/milestones -q '.[].title'`.
+2. **Milestones, labels e board:** rode `./scripts/bootstrap.sh`. Ele cria os milestones que
+   faltam, as labels, o board no Projects (salvo em `scripts/board.conf`), a branch `pr-assets`
+   e as proteções. O board exige o escopo `project` no gh (`gh auth refresh -s project`);
+   se não houver, me avise. Confirme com `gh api repos/{owner}/{repo}/milestones -q '.[].title'`.
 3. **Issues:** para cada task do roadmap, na ordem:
-   `gh issue create --title "NNN · <título>" --body "Spec: docs/tasks/NNN-<slug>.md" --milestone "<milestone>"`.
+   `gh issue create --title "NNN · <título>" --body "Spec: docs/tasks/NNN-<slug>.md" --milestone "<milestone>" --label "<labels do frontmatter>"`.
    Anote o número da issue no frontmatter (`issue:`) e na coluna Issue do roadmap.
    O status continua `todo`.
-4. **Project (opcional, pergunte antes):** se eu quiser um quadro, crie com
-   `gh project create --owner <owner> --title "<projeto>"` e adicione as issues com
-   `gh project item-add`. Isso exige o escopo `project` no gh
-   (`gh auth refresh -s project`); se não houver, me avise.
-5. Como as issues agora existem desde o início, ajuste o passo 4 do `CLAUDE.md`
-   ("Ao pedir próxima task") para: "use a issue já listada no roadmap; crie uma só se não existir".
-6. Faça commit dessas atualizações numa branch `setup/issues`, me mostre o resultado
-   e pergunte antes de dar push e abrir o PR.
+4. **Board:** rode `./scripts/sync-board.sh` para colocar todas as issues no board, na ordem
+   do roadmap. Me lembre de criar as visões na interface (Board por Etapa, Backlog por Ordem,
+   Roadmap por Milestone).
+5. Faça commit dessas atualizações (roadmap, frontmatters, `scripts/board.conf`) numa branch
+   `setup/issues`, me mostre o resultado e pergunte antes de dar push e abrir o PR.
 
 # Ao final
 

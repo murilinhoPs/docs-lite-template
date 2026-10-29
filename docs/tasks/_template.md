@@ -4,6 +4,7 @@ title: <Título>
 milestone: M0
 status: todo         # todo | doing | review | done
 issue: ""
+labels: [type:feature]   # type:* obrigatório; prio:* e area:* opcionais
 branch: task/NNN-<slug>
 prints: false        # true quando o Claude testou e salvou prints
 ---

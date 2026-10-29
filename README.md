@@ -5,7 +5,9 @@
 ## Como este repositório funciona
 
 - **Tudo é documentado em `docs/`:** PRD, roadmap, tasks, ADRs e design.
-- **Issues são só registro:** número + link para a task em `docs/tasks/`.
+- **Issues são só registro:** número, labels, milestone e link para a task em `docs/tasks/`.
+- **O board no Projects é um espelho do `docs/roadmap.md`:** `./scripts/sync-board.sh` copia
+  status (Etapa) e ordem do roadmap para o board. Mude o roadmap, nunca o board.
 - **O Claude Code segue o [`CLAUDE.md`](CLAUDE.md):** implementa uma task por vez, na ordem do roadmap.
 
 Ciclo de uma task:
@@ -21,16 +23,23 @@ Ciclo de uma task:
 ## Começando um projeto a partir deste template
 
 ```bash
-gh repo create meu-projeto --template murilinhoPs/docs-first-lite --private --clone
+gh repo create meu-projeto --template murilinhoPs/docs-lite-template --private --clone
 cd meu-projeto
 ./scripts/bootstrap.sh
 ```
 
-O `bootstrap.sh` cria o que o template não copia: milestones, branch `pr-assets`,
-worktree de prints, squash-only e proteção da `main`.
+Antes, dê ao gh acesso a Projects: `gh auth refresh -s project`.
+
+O `bootstrap.sh` cria o que o template não copia: milestones, labels, board no Projects
+(campos Etapa e Ordem, número salvo em `scripts/board.conf`), branch `pr-assets`, worktree
+de prints, squash-only e proteção da `main`. Pode rodar de novo: ele pula o que já existe.
 
 Depois:
 
+- [ ] Commit do `scripts/board.conf` gerado pelo bootstrap
+- [ ] Criar as visões do board na interface do Projects:
+      **Board** agrupado por Etapa · **Backlog** em tabela ordenada por Ordem · **Roadmap** por Milestone
+- [ ] Criar labels `area:*` do projeto, se fizer sentido (`gh label create "area:ui" --color C5DEF5`)
 - [ ] Trocar o título e a frase deste README
 - [ ] Preencher `docs/overview.md` e `docs/prd.md`
 - [ ] Escrever as primeiras tasks em `docs/tasks/` e listá-las em `docs/roadmap.md`

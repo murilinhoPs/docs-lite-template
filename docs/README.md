@@ -1,7 +1,7 @@
 # Documentação
 
-Tudo que é planejado ou decidido neste projeto vive aqui. O GitHub guarda só o código,
-as issues de registro e os PRs.
+Tudo que é planejado ou decidido neste projeto vive aqui. O GitHub guarda o código,
+as issues de registro, o board (espelho do `roadmap.md`) e os PRs.
 
 | Arquivo / pasta | O que guarda |
 |---|---|
@@ -18,6 +18,7 @@ as issues de registro e os PRs.
 ## Regras
 
 - A ordem das linhas em `roadmap.md` é a ordem de execução.
+- `roadmap.md` manda no board: depois de mudar o roadmap, rode `./scripts/sync-board.sh`.
 - Só uma task em `doing` por vez.
 - ADR aceito não é editado: um novo ADR o substitui (`superseded by 0007`).
 - Mudou comportamento? Atualize a task ou a spec no mesmo commit.
