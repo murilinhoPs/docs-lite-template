@@ -9,6 +9,11 @@ name: CI
 on:
   pull_request:
 
+# Um run por PR: um evento duplicado (ou um push novo) cancela o run anterior.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
