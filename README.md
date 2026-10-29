@@ -29,8 +29,25 @@
   `merge.sh`) usam `gh api repos/{owner}/{repo}/...` e funcionam em qualquer ambiente, inclusive
   nas sessões do Claude Code na nuvem. A exceção é o `sync-board.sh` (`gh project`).
 
+## Comandos
+
+Fluxo: `/preparar` (até nada travar) → `/planejar` → ciclo das tasks.
+
+| Comando | Papel | Para quando |
+|---|---|---|
+| `/preparar [pasta]` | Analista de docs | `docs/preparo.md` em `fase: pronto` e PR de docs aberto |
+| `/planejar <milestone>` | PM + docs | PR de planejamento aberto (specs + issues + roadmap) |
+| `/implementar [issue]` | Dev | Commits locais feitos, antes do push |
+| `/qa [issue]` | Tester | Prints na `pr-assets` e relatório entregue |
+| `/abrir-pr [issue]` | Dev | PR aberto ou atualizado, com o head no corpo |
+| `/revisar [pr]` | Reviewer (subagente) | Review postado como comentário |
+| `/corrigir [pr ou issue]` | Dev | Correções commitadas (e enviadas, se o PR existir) |
+| `/fechar [pr]` | PM | Board, nits e milestone atualizados |
+
 ## Ciclo de uma task, em comandos
 
+0. `/preparar` (uma vez por projeto) → inventaria o material de `_import/`, organiza em `docs/` e
+   entrevista você até nada travar o planejamento; abre o PR `[docs] Preparo do projeto`.
 1. `/planejar M1` → propõe issues, ACs e specs; depois do seu ok, abre o PR de planejamento. Você faz o merge.
 2. `/implementar` → pega a primeira issue `todo`, cria `task/<N>-<slug>`, marca `doing` e faz commits locais.
 3. Você testa contra os ACs (o `/implementar` diz como).
@@ -50,6 +67,9 @@ cd meu-projeto
 gh auth refresh -s project
 ./scripts/bootstrap.sh
 ```
+
+Depois do bootstrap, rode `/preparar` no Claude Code (veja "Preparando o projeto") e, com o PR de
+preparo mergeado, `/planejar M1`.
 
 O `bootstrap.sh` roda **só localmente**, com o `gh` do usuário logado: ele usa GraphQL
 (`gh project`, `gh label`, `gh repo edit`), que as sessões do Claude Code na nuvem não têm.
@@ -117,8 +137,8 @@ A aprovação (`/abrir-pr`) vale para um head específico. O ruleset da `main`, 
       **Board** (por Etapa), **Backlog** (tabela por Ordem) e **Roadmap** (por Milestone).
       Se a cópia falhar, ele cria um board vazio e as visões ficam para fazer à mão
 - [ ] Trocar o título e a frase deste README
-- [ ] Preencher `docs/overview.md` e `docs/prd.md` (com a tabela Features) e criar as specs em
-      `docs/specs/` (ou importar docs que você já tem, veja abaixo)
+- [ ] Rodar `/preparar` (com o material que você já tem em `_import/`, se houver) até o
+      `docs/preparo.md` chegar em `fase: pronto`, e fazer o merge do PR de preparo
 - [ ] Rodar `./scripts/bootstrap.sh` de novo para criar as labels `area:*` da tabela Features
 - [ ] Planejar o primeiro milestone com `/planejar M1`
 - [ ] Ajustar `docs/qa/print-rules.md` para a plataforma
@@ -130,30 +150,31 @@ diz `n/a: <motivo> — #<fila>`.
 
 Os scripts têm testes com `gh` simulado: `./scripts/test/run.sh` (precisa de `jq` e `yq`).
 
-## Importando docs que você já tem
+## Preparando o projeto: `/preparar`
 
-Se o projeto já tem briefing, specs, notas, decisões ou imagens, o Claude Code organiza tudo
-em `docs/` com a skill [`importar-docs`](.claude/skills/importar-docs/SKILL.md).
+O `/preparar` roda antes do `/planejar`. Ele descobre quais docs o projeto já tem, o que falta e
+preenche as lacunas entrevistando você. O estado fica em [`docs/preparo.md`](docs/preparo.md),
+um checklist de 15 itens (8 que **travam** o planejamento e 7 que **ajudam**); abra-o antes para
+saber o que separar.
 
-1. Coloque os arquivos numa pasta do repositório, por exemplo `_import/` (ou anexe na conversa).
-2. Peça ao Claude Code: "importe meus docs de `_import/`" (ou rode `/importar-docs`).
-3. Ele lê cada arquivo e pergunta o que ele é (PRD, spec de feature, trabalho a fazer, decisão técnica, design...),
-   sugerindo um palpite.
-4. Ele mostra um plano: o que vai para onde, quais features e specs surgem, quais issues serão
-   criadas (título, milestone, labels, AC), o que não será importado e o que ficará como `TODO`.
-5. Você muda o que quiser (destino de um doc, ordem das issues, milestones) até aprovar.
-6. Só então ele segue o mesmo caminho do `/planejar`: numa branch `plan/importacao`, organiza os
-   arquivos, escreve as specs, cria as issues aprovadas (com as linhas no roadmap) e abre um PR
-   só de docs para você fazer o merge.
+1. Coloque o material numa pasta `_import/` (PRD, briefing, notas, PDFs, telas, demo em HTML) e
+   rode `/preparar` (ou peça "importe meus docs"). Sem material, ele começa pelo que há em `docs/`.
+2. **Inventário:** ele lê tudo e marca cada item do checklist como `tem`, `parcial`, `falta` ou
+   `n/a`, com a evidência, e anota as contradições entre as fontes.
+3. **Plano:** mostra o checklist, o plano de organização dos arquivos (o que vai para onde) e a
+   ordem da entrevista. Nada é movido antes do seu "pode seguir".
+4. **Entrevista:** rodadas de até 4 perguntas, começando pelas contradições e pelo que trava, com
+   palpites tirados do material. Decisão técnica vira ADR; "não sei ainda" vira `> Pendente:`.
+   Ao fim de cada rodada ele faz commit e pergunta se continua; parar é seguro, o próximo
+   `/preparar` retoma pelo `preparo.md`.
+5. **Pronto:** com os itens que travam resolvidos, ele abre o PR `[docs] Preparo do projeto`.
+   Depois do merge, rode `/planejar M1`.
 
-Ele não inventa conteúdo: o que faltar nos templates vira `TODO: <o que falta>`.
-O mapa de destinos e as regras ficam no [`CLAUDE.md`](CLAUDE.md), na seção
-"Importação de docs".
-
-**Quer o setup completo** (organizar o material, gerar overview, specs e roadmap e criar as
-issues no GitHub)? Use o prompt pronto em
+Ele não inventa conteúdo e não cria issues (isso é do `/planejar`). O mapa "material → destino"
+e as regras de importação estão em [`.claude/commands/preparar.md`](.claude/commands/preparar.md).
+Também há um prompt pronto em
 [`docs/prompts/setup-a-partir-de-docs.md`](docs/prompts/setup-a-partir-de-docs.md).
 
 **Usando outra IA?** Codex, opencode e Cursor leem o `AGENTS.md` (link para o `CLAUDE.md`), mas
-não leem skills nem comandos do Claude Code. Peça para ela ler também o `SKILL.md` acima e o
-comando da fase (`.claude/commands/<fase>.md`) antes de começar.
+não rodam os comandos do Claude Code. Peça para ela seguir o arquivo do comando da fase
+(`.claude/commands/<fase>.md`), começando por `.claude/commands/preparar.md`.

@@ -15,7 +15,10 @@ PM + docs. Transforma o PRD e as specs em issues ordenadas para o milestone. Nã
 
 ## Passos
 
-1. Leia `docs/prd.md` (tabela Features), as specs em `docs/specs/`, os ADRs e o `docs/roadmap.md`.
+1. Confira `docs/preparo.md`: se a `fase` não for `pronto` (com o PR de preparo mergeado), pare e
+   sugira `/preparar`. Itens `trava` que ficaram `parcial` por `> Pendente:`: as issues que
+   dependem deles ficam para depois (diga quais).
+   Leia `docs/prd.md` (tabela Features), as specs em `docs/specs/`, os ADRs e o `docs/roadmap.md`.
 2. Proponha, **sem criar nada**:
    - as issues do milestone, na ordem: título (`[feat] ...`, `[chore] ...`), área, spec, labels
      (`type:*`, `area:*`), ACs (IDs `AC-F<n>-NN`) e posição no roadmap;

@@ -178,4 +178,4 @@ fi
 [ -f "$CONF" ] && ./scripts/sync-board.sh || true
 
 echo "Pronto. Faça commit de scripts/board.conf e docs/roadmap.md numa branch e abra um PR (a main é protegida)."
-echo "Depois: preencher docs/overview.md e docs/prd.md e pedir ao Claude Code a próxima task (#$SETUP_N)."
+echo "Depois: rodar /preparar no Claude Code (docs + entrevista) e, com o PR de preparo mergeado, /planejar M1."

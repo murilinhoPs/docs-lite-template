@@ -23,6 +23,7 @@ Siga o comando; as frases ao lado continuam valendo e levam ao mesmo comando.
 
 | Fase | Comando | Frase | Para quando |
 |---|---|---|---|
+| Preparar os docs | `/preparar [pasta]` | "importe meus docs", "prepare o projeto" | `docs/preparo.md` em `fase: pronto` e PR de docs aberto |
 | Planejar um milestone | `/planejar <milestone>` | "planeje o M1" | PR de planejamento aberto |
 | Implementar | `/implementar [issue]` | "próxima task", "implemente a issue N" | commits locais, antes do push |
 | Testar | `/qa [issue]` | "teste você também" | prints na `pr-assets` e relatório |
@@ -31,7 +32,7 @@ Siga o comando; as frases ao lado continuam valendo e levam ao mesmo comando.
 | Corrigir | `/corrigir [pr ou issue]` | "corrija" | correções commitadas (e enviadas) |
 | Fechar | `/fechar [pr]` | "fechei o merge", "feche a task" | board, nits e milestone atualizados |
 
-Importar docs que já existem: skill `.claude/skills/importar-docs/SKILL.md` ("importe meus docs").
+Fluxo: `/preparar` (até nada travar) → `/planejar` → ciclo das tasks (`/implementar` … `/fechar`).
 
 ## Status: o roadmap guarda o destino, o GitHub mostra o andamento
 
@@ -94,36 +95,6 @@ usa `gh project` e só roda onde o board é acessível.
 - Issue "fila" (opcional): uma issue `type:chore` que lista trabalho que depende de algo que não
   temos (ex.: Mac/iOS). Quando um AC ou print não puder ser feito por isso, o PR diz
   `n/a: <motivo> — #<fila>`.
-
-## Importação de docs
-
-A skill `importar-docs` pergunta o que é cada doc, apresenta o plano e só executa depois da
-aprovação. As issues saem como no `/planejar`: proposta → aprovação → specs + issues + roadmap
-num PR de docs.
-
-| Material | Destino |
-|---|---|
-| Resumo do projeto, stack, arquitetura, glossário | `docs/overview.md` |
-| Visão, público, escopo, prioridades (MoSCoW), lista de features | `docs/prd.md` (features ganham IDs `F<n>`) |
-| Como uma feature funciona (telas, estados, regras, AC) | `docs/specs/<feature>.md` |
-| Funcionalidade ou trabalho a construir | **issue** + linha no `docs/roadmap.md` |
-| Milestones e ordem de entrega | `docs/roadmap.md` (+ milestones no GitHub) |
-| Decisão técnica (escolha de stack, padrão, trade-off) | `docs/adr/NNNN-<slug>.md` |
-| Cores, tipografia, espaçamento, componentes | `docs/design/design-system.md` e `tokens.json` |
-| Tela aprovada, mockup | `docs/assets/screens/` |
-| Referência visual, logo, moodboard | `docs/assets/design/` |
-| Regras de teste e prints | `docs/qa/print-rules.md` |
-
-Regras de importação:
-
-- Não invente conteúdo. O que faltar vira `TODO: <o que falta>`; ambiguidade numa spec vira
-  `> Pendente: <pergunta>`.
-- Use os templates (`docs/specs/_template.md`, `docs/adr/_template.md`) e mantenha o frontmatter.
-- ADRs recebem o próximo número livre e entram como `Proposta`, a menos que o usuário diga que já
-  estão aceitos. Atualize o índice em `docs/adr/README.md`.
-- Milestone novo entra no `roadmap.md`, na tabela do `prd.md` e na lista do `scripts/bootstrap.sh`;
-  no GitHub, crie com `gh api repos/{owner}/{repo}/milestones -f title="<milestone>"`.
-- Um doc pode virar vários destinos; vários docs podem virar um. Trechos sem destino, pergunte.
 
 ## Regras gerais
 

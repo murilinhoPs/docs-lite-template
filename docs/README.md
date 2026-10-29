@@ -16,6 +16,7 @@ comportamento atualiza a spec no mesmo PR.
 
 | Arquivo / pasta | O que guarda |
 |---|---|
+| [preparo.md](preparo.md) | Checklist do preparo (o que o projeto precisa antes do `/planejar`) e registro da entrevista |
 | [overview.md](overview.md) | Resumo do projeto, stack e arquitetura |
 | [prd.md](prd.md) | Visão, escopo, MoSCoW e a tabela de Features (`F1`, `F2`…) |
 | [specs/](specs/) | Uma spec viva por feature, com os AC vigentes (`AC-F<n>-NN`) |

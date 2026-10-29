@@ -364,7 +364,7 @@ CHECKLIST="$(awk '/^## Checklist do projeto novo/ { s = 1; next } /^## / { s = 0
 check "README: checklist cita os checks obrigatórios e o open-pr.sh --update (CA-C6)" \
   bash -c 'grep -q "ci" <<<"$0" && grep -q "pr-gate" <<<"$0" && grep -qF "open-pr.sh --update" <<<"$0"' "$CHECKLIST"
 check "README: seção Merge gate" grep -q '^## Merge gate' README.md
-for c in planejar implementar qa abrir-pr revisar corrigir fechar; do
+for c in preparar planejar implementar qa abrir-pr revisar corrigir fechar; do
   f=".claude/commands/$c.md"
   check "comando /$c com papel, argumentos, passos, onde parar e nunca (CA-D1)" \
     bash -c 'for h in Papel Argumentos Passos "Onde parar" Nunca; do grep -qx "## $h" "$0" || exit 1; done' "$f"
@@ -380,6 +380,33 @@ check "nada cita a label, o token nem o workflow de sync removidos (CA-D4)" \
 check "roadmap só com todo, doing e done (CA-D4)" \
   bash -c 'grep -q "^Status: \`todo\` · \`doing\` · \`done\`" docs/roadmap.md && ! grep -qE "\| (review) \|" docs/roadmap.md'
 check "AGENTS.md é link simbólico para o CLAUDE.md (CA-D6)" test "$(readlink AGENTS.md)" = CLAUDE.md
+P=docs/preparo.md
+check "preparo.md: frontmatter updated e fase (CA-E1)" \
+  bash -c 'sed -n "1,4p" "$0" | grep -q "^updated: " && sed -n "1,4p" "$0" | grep -qE "^fase: (inventario|entrevista|pronto)"' "$P"
+check "preparo.md: colunas do checklist" \
+  grep -qxF '| # | Item | Nível | Status | Evidência (arquivo §seção) | Destino | Em aberto |' "$P"
+check "preparo.md: 15 itens, 8 trava e 7 ajuda" \
+  test "$(grep -cE '^\| [0-9]+ \|' "$P"):$(grep -cE '^\| [0-9]+ \|[^|]*\| trava \|' "$P"):$(grep -cE '^\| [0-9]+ \|[^|]*\| ajuda \|' "$P")" = "15:8:7"
+check "preparo.md: seção Registro da entrevista" grep -qx '## Registro da entrevista' "$P"
+C=.claude/commands/preparar.md
+check "/preparar com as 4 fases (CA-E2)" \
+  bash -c 'for f in "Fase 1: inventário" "Fase 2: relatório" "Fase 3: entrevista" "Fase 4: pronto"; do grep -q "^### $f" "$0" || exit 1; done' "$C"
+check "/preparar para antes de organizar e entre rodadas" \
+  bash -c 'grep -q "posso organizar os arquivos e começar a entrevista?" "$0" && grep -q "mais uma rodada ou paramos aqui?" "$0"' "$C"
+check "/preparar: nunca inventar, criar issues, organizar antes do ok ou passar de 4 perguntas" \
+  bash -c 'n="$(awk "/^## Nunca/ { s = 1; next } /^## / { s = 0 } s" "$0")"; grep -q "Inventar" <<<"$n" && grep -q "Criar issues" <<<"$n" && grep -q "antes do \"pode seguir\"" <<<"$n" && grep -q "mais de 4 perguntas" <<<"$n"' "$C"
+check "/preparar é retomável: fase entrevista pula para a Fase 3 e só pergunta falta/parcial (CA-E4)" \
+  bash -c 'grep -q "Se a \`fase\` for \`entrevista\`, pule para a \*\*Fase 3\*\*" "$0" && grep -q "pergunte só o que está \`falta\` ou \`parcial\`" "$0"' "$C"
+check "/preparar traz o mapa material → destino e as regras de importação" \
+  bash -c 'grep -q "^## Mapa: material → destino" "$0" && grep -q "^## Regras de importação" "$0"' "$C"
+check "skill de importação removida, ninguém cita (CA-E3)" \
+  bash -c 'test ! -e .claude/skills/importar"-docs" && ! grep -rqn "importar""-docs" --exclude-dir=.git .'
+check "\"importe meus docs\" leva ao /preparar" grep -q '`/preparar \[pasta\]` | "importe meus docs"' CLAUDE.md
+check "mesmo fluxo /preparar → /planejar → ciclo (CA-E5)" \
+  bash -c 'for f in CLAUDE.md README.md .claude/commands/preparar.md; do grep -q "/preparar\` (até nada travar) → \`/planejar\` → ciclo" "$f" || grep -q "/preparar (até nada travar) → /planejar → ciclo" "$f" || { echo "$f"; exit 1; }; done; grep -q "/planejar M1" docs/prompts/setup-a-partir-de-docs.md && grep -q "fase: pronto" docs/prompts/setup-a-partir-de-docs.md'
+check "/preparar primeiro na tabela de comandos do CLAUDE.md e do README" \
+  bash -c 'for f in CLAUDE.md README.md; do grep -m1 -E "^\| .*\`/[a-z-]+" "$f" | grep -q "/preparar" || exit 1; done'
+check "/planejar manda rodar /preparar antes" grep -q "sugira \`/preparar\`" .claude/commands/planejar.md
 check "comandos e CLAUDE.md citam merge.sh travado no head" \
   bash -c 'grep -q "merge.sh <pr> <head>" CLAUDE.md && grep -q "merge.sh <pr> <head>" .claude/commands/abrir-pr.md && grep -q "merge.sh <pr> <head>" .claude/commands/corrigir.md'
 # Padrão montado em partes para este arquivo não casar com ele mesmo.
