@@ -1,0 +1,54 @@
+name: Feature
+description: Mudança de comportamento descrita por uma spec em docs/specs/
+title: "[feat] "
+labels: ["type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A issue descreve a mudança; a spec (`docs/specs/<feature>.md`) descreve como a feature funciona hoje.
+        AC novo nasce na spec, com o próximo ID livre da feature, e é citado aqui.
+        Depois de criar, inclua a issue no roadmap: `./scripts/new-issue.sh --existing <N> [--after <issue>]`.
+  - type: input
+    id: spec
+    attributes:
+      label: Spec
+      placeholder: docs/specs/auth.md  (F2)
+    validations:
+      required: true
+  - type: input
+    id: area
+    attributes:
+      label: Área
+      placeholder: area:auth
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+    validations:
+      required: true
+  - type: textarea
+    id: escopo
+    attributes:
+      label: Escopo
+  - type: textarea
+    id: fora
+    attributes:
+      label: Fora de escopo
+  - type: textarea
+    id: ac
+    attributes:
+      label: Critérios de aceite
+      value: |
+        - [ ] AC-F<n>-01: 
+    validations:
+      required: true
+  - type: textarea
+    id: notas
+    attributes:
+      label: Notas técnicas
+      description: ADRs, tokens, telas relevantes.

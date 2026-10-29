@@ -4,13 +4,48 @@ Prints só são gerados quando o Claude testa a task (passo opcional do processo
 
 ## Onde salvar
 
-Branch `pr-assets`, pasta `task-NNN/`, um arquivo por critério de aceite:
+Branch `pr-assets`, uma pasta por issue e por commit testado (`<sha7>` = `git rev-parse --short=7 HEAD`
+da branch da task), um arquivo por critério de aceite:
 
 ```
-task-NNN/
-├── ca-1-<descricao>.png
-└── ca-2-<descricao>.png
+issue-<N>/
+└── <sha7>/
+    ├── ac-f2-01-<descricao>.png
+    ├── ac-f2-02-<descricao>.png
+    └── print_sizes.txt
 ```
+
+Testou de novo depois de uma correção? Crie uma pasta nova com o sha novo. As pastas antigas
+ficam como histórico; não sobrescreva.
+
+## `print_sizes.txt`
+
+Prova que os prints são da versão do código que vai no PR:
+
+```
+commit: <hash completo do HEAD testado>
+ac-f2-01-<descricao>.png  <largura>x<altura>  <sha256 de 64 caracteres>
+ac-f2-02-<descricao>.png  <largura>x<altura>  <sha256 de 64 caracteres>
+```
+
+Para gerar (no worktree da `pr-assets`, com `file` e `sha256sum` disponíveis):
+
+```bash
+cd ../<repo>-assets/issue-<N>/<sha7>
+{ echo "commit: $(git -C ../../../<repo> rev-parse HEAD)"
+  for f in *.png; do
+    size=$(file "$f" | grep -oE '[0-9]+ x [0-9]+' | tr -d ' ')
+    echo "$f  $size  $(sha256sum "$f" | cut -d' ' -f1)"
+  done; } > print_sizes.txt
+```
+
+O PR aponta para a pasta de prints que vale para o head final (seção Prints do PR template).
+O check `pr-gate` confere que o `<sha7>` da pasta é prefixo do `commit:` do `print_sizes.txt` e
+que esse commit é o head do PR ou um ancestral dele com **só docs** mudando depois (como o
+commit do `done` no roadmap e o `Registra PR #M`, que vêm depois do `/qa`). Mudou código depois
+dos prints? Teste de novo (`/qa`), salve numa pasta nova e rode `./scripts/open-pr.sh --update <pr>`.
+
+PR só de docs (`./scripts/docs-only.sh`) não precisa de prints.
 
 ## Método por plataforma
 
