@@ -99,10 +99,15 @@ case "$method $path" in
   "GET issues")
     label="$(param labels)"
     jq --arg l "$label" '[.[] | select($l == "" or any(.labels[]; .name == $l))]' "$S/issues.json" | out ;;
+  "GET issues/"*)
+    n="${path#issues/}"
+    jq -e --argjson n "$n" '.[] | select(.number == $n)' "$S/issues.json" | out \
+      || { echo "HTTP 404: Not Found" >&2; exit 1; } ;;
   "POST issues")
     n="$(next_number)"
-    jq --argjson n "$n" --argjson b "$body" \
-      '. += [{number: $n, title: $b.title, body: $b.body, milestone: $b.milestone,
+    jq --argjson n "$n" --argjson b "$body" --slurpfile ms "$S/milestones.json" \
+      '. += [{number: $n, title: $b.title, body: $b.body,
+              milestone: ($ms[0][] | select(.number == $b.milestone)),
               labels: [($b.labels // [])[] | {name: .}], state: "open"}]' \
       "$S/issues.json" > "$S/tmp" && save issues.json
     jq --argjson n "$n" '.[] | select(.number == $n)' "$S/issues.json" | out ;;

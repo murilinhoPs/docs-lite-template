@@ -10,4 +10,4 @@ NAME="${1:-docs-lite-template}"
 
 gh repo create "$NAME" --private --source . --push
 gh repo edit "$NAME" --template
-echo "Template publicado: $(gh repo view "$NAME" --json url -q .url)"
+echo "Template publicado: $(git remote get-url origin)"

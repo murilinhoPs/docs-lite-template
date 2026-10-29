@@ -2,8 +2,9 @@
 # Roda UMA vez em cada projeto novo criado a partir do template, LOCALMENTE,
 # com o gh do usuário logado. Não funciona nas sessões do Claude Code na nuvem
 # (usa GraphQL: gh repo view, gh label, gh project).
-# Cria o que o "Use this template" não copia: milestones, labels, board no
-# Projects, branch pr-assets e configurações de merge/proteção.
+# Cria o que o "Use this template" não copia: milestones, labels, a issue de
+# setup (com a linha no roadmap), board no Projects, branch pr-assets e
+# configurações de merge/proteção.
 # Pode ser rodado de novo: pula o que já existe.
 #
 # Uso: ./scripts/bootstrap.sh
@@ -39,9 +40,42 @@ prio:media FBCA04
 prio:baixa FEF2C0
 status:doing 5319E7
 LABELS
-echo "  labels: type:*, prio:*, status:doing (adicione area:* conforme o projeto)"
+gh label create type:design --repo "$REPO" --color D4C5F9 --description "Mudança visual, exige prints" --force >/dev/null
 
-# 3. Board no GitHub Projects (espelho do docs/roadmap.md)
+# area:* = coluna Área da tabela Features do docs/prd.md (linhas com <placeholder> são ignoradas).
+AREAS="$(awk -F'|' '
+  /^## / { feat = ($0 ~ /^## Features/) }
+  feat && /^\|/ {
+    if (!hdr) { hdr = 1; for (i = 2; i < NF; i++) { h = $i; gsub(/[ \t]/, "", h); if (h == "Área") col = i }; next }
+    if (!col) next
+    a = $col; gsub(/[ \t`]/, "", a)
+    if (a == "" || a ~ /[<>]/ || a ~ /^-+$/) next
+    sub(/^area:/, "", a); print "area:" a
+  }' docs/prd.md | sort -u)"
+if [ -n "$AREAS" ]; then
+  while read -r a; do
+    gh label create "$a" --repo "$REPO" --color C5DEF5 --force >/dev/null
+  done <<<"$AREAS"
+  echo "  labels area:*: $(paste -sd ' ' <<<"$AREAS")"
+else
+  echo "  aviso: nenhuma área na tabela Features do docs/prd.md; labels area:* não criadas (rode de novo depois de preenchê-la)"
+fi
+echo "  labels: type:*, prio:*, status:doing"
+
+# 3. Issue de setup (corpo em docs/prompts/issue-setup.md) e a linha dela no roadmap
+SETUP_TITLE="[chore] Setup do projeto"
+SETUP_N="$(gh api --paginate "repos/$REPO/issues?state=all&per_page=100" \
+  -q ".[] | select(.pull_request == null and .title == \"$SETUP_TITLE\") | .number" | head -n1)"
+if [ -z "$SETUP_N" ]; then
+  SETUP_N="$(./scripts/new-issue.sh --title "$SETUP_TITLE" --body-file docs/prompts/issue-setup.md \
+    --milestone "M0 Fundação" --labels type:chore)"
+  echo "  issue de setup criada: #$SETUP_N (faça commit do docs/roadmap.md)"
+else
+  ./scripts/new-issue.sh --existing "$SETUP_N" >/dev/null
+  echo "  issue de setup já existe: #$SETUP_N"
+fi
+
+# 4. Board no GitHub Projects (espelho do docs/roadmap.md)
 CONF="scripts/board.conf"
 OWNER="${REPO%%/*}"
 if [ -f "$CONF" ]; then
@@ -60,7 +94,7 @@ else
   echo "  falta no repo: secret PROJECT_TOKEN para o Action de sync (veja o README)"
 fi
 
-# 4. Branch órfã pr-assets para prints de teste
+# 5. Branch órfã pr-assets para prints de teste
 if git ls-remote --exit-code --heads origin pr-assets >/dev/null 2>&1; then
   echo "  pr-assets já existe"
 else
@@ -72,7 +106,7 @@ else
   echo "  pr-assets criada"
 fi
 
-# 5. Worktree local da pr-assets (fora do repo, ao lado dele)
+# 6. Worktree local da pr-assets (fora do repo, ao lado dele)
 WT="../$(basename "$PWD")-assets"
 if [ ! -d "$WT" ]; then
   git fetch origin pr-assets
@@ -80,7 +114,7 @@ if [ ! -d "$WT" ]; then
   echo "  worktree em $WT"
 fi
 
-# 6. Só squash merge e apagar branch após merge
+# 7. Só squash merge e apagar branch após merge
 gh repo edit "$REPO" \
   --enable-squash-merge \
   --enable-merge-commit=false \
@@ -88,7 +122,7 @@ gh repo edit "$REPO" \
   --delete-branch-on-merge
 echo "  merge: só squash"
 
-# 7. Bloqueia push direto e force push na main (sem exigir aprovação: projeto solo)
+# 8. Bloqueia push direto e force push na main (sem exigir aprovação: projeto solo)
 gh api -X POST "repos/$REPO/rulesets" --input - >/dev/null <<'JSON' || echo "  aviso: ruleset não criado (repo privado em plano Free não suporta rulesets; configure em Settings → Rules se disponível)"
 {
   "name": "main protegida",
@@ -109,7 +143,8 @@ gh api -X POST "repos/$REPO/rulesets" --input - >/dev/null <<'JSON' || echo "  a
 }
 JSON
 
-# 8. Primeira sincronização (só faz algo se já houver tasks com issue)
+# 9. Primeira sincronização
 [ -f "$CONF" ] && ./scripts/sync-board.sh || true
 
-echo "Pronto. Próximo passo: preencher docs/overview.md, docs/prd.md e pedir ao Claude Code a task 001."
+echo "Pronto. Faça commit de scripts/board.conf e docs/roadmap.md numa branch e abra um PR (a main é protegida)."
+echo "Depois: preencher docs/overview.md e docs/prd.md e pedir ao Claude Code a próxima task (#$SETUP_N)."
