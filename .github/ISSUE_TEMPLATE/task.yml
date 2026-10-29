@@ -7,7 +7,8 @@ body:
     attributes:
       value: |
         A issue é só registro. Objetivo, escopo e critérios de aceite ficam em `docs/tasks/NNN-<slug>.md`.
-        Depois de criar, anote o número da issue no roadmap e rode `./scripts/sync-board.sh`.
+        Prefira `./scripts/create-issue.sh docs/tasks/NNN-<slug>.md`, que já grava o número no roadmap.
+        Se criar por aqui, anote o número no frontmatter e na coluna Issue do roadmap; o board é atualizado pelo Action.
   - type: input
     id: spec
     attributes:

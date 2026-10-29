@@ -21,7 +21,7 @@ https://github.com/murilinhoPs/docs-lite-template
 Se o projeto não foi criado a partir dele, ou se faltar algum arquivo (`CLAUDE.md`, `docs/`,
 `.claude/skills/`, `scripts/bootstrap.sh`, `.github/pull_request_template.md`),
 copie do template antes de começar:
-`gh repo clone murilinhoPs/docs-lite-template /tmp/docs-lite-template`
+`git clone https://github.com/murilinhoPs/docs-lite-template /tmp/docs-lite-template`
 e traga para cá só o que faltar, sem sobrescrever nada que já exista.
 
 Antes de qualquer coisa, leia:
@@ -102,17 +102,20 @@ Eu faço o merge na `main`.
 # Fase 4: GitHub (só depois do merge da `setup/docs`)
 
 1. `git switch main && git pull`.
-2. **Milestones, labels e board:** rode `./scripts/bootstrap.sh`. Ele cria os milestones que
+2. **Milestones, labels e board:** rode `./scripts/bootstrap.sh` (só funciona localmente, com o
+   `gh` do usuário; numa sessão na nuvem, peça para eu rodar). Ele cria os milestones que
    faltam, as labels, o board no Projects (salvo em `scripts/board.conf`), a branch `pr-assets`
    e as proteções. O board exige o escopo `project` no gh (`gh auth refresh -s project`);
    se não houver, me avise. Confirme com `gh api repos/{owner}/{repo}/milestones -q '.[].title'`.
 3. **Issues:** para cada task do roadmap, na ordem:
-   `gh issue create --title "NNN · <título>" --body "Spec: docs/tasks/NNN-<slug>.md" --milestone "<milestone>" --label "<labels do frontmatter>"`.
-   Anote o número da issue no frontmatter (`issue:`) e na coluna Issue do roadmap.
+   `./scripts/create-issue.sh docs/tasks/NNN-<slug>.md`. Ele usa título, milestone e labels do
+   frontmatter e grava o número da issue no frontmatter (`issue:`) e na coluna Issue do roadmap.
    O status continua `todo`.
-4. **Board:** rode `./scripts/sync-board.sh` para colocar todas as issues no board, na ordem
-   do roadmap. Me lembre de criar as visões na interface (Board por Etapa, Backlog por Ordem,
-   Roadmap por Milestone).
+4. **Board:** o Action `.github/workflows/sync-board.yml` coloca as issues no board, na ordem do
+   roadmap, quando o PR da `setup/issues` abrir e quando ele for mergeado (precisa do secret
+   `PROJECT_TOKEN`, veja o README). No Claude Code local, rode também `./scripts/sync-board.sh --auto`.
+   Me lembre de criar as visões na interface (Board por Etapa, Backlog por Ordem,
+   Roadmap por Milestone) e o secret `PROJECT_TOKEN`, se ainda não existir.
 5. Faça commit dessas atualizações (roadmap, frontmatters, `scripts/board.conf`) numa branch
    `setup/issues`, me mostre o resultado e pergunte antes de dar push e abrir o PR.
 

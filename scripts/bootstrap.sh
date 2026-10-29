@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Roda UMA vez em cada projeto novo criado a partir do template.
+# Roda UMA vez em cada projeto novo criado a partir do template, LOCALMENTE,
+# com o gh do usuário logado. Não funciona nas sessões do Claude Code na nuvem
+# (usa GraphQL: gh repo view, gh label, gh project).
 # Cria o que o "Use this template" não copia: milestones, labels, board no
 # Projects, branch pr-assets e configurações de merge/proteção.
 # Pode ser rodado de novo: pula o que já existe.
@@ -35,8 +37,9 @@ type:chore BFD4F2
 prio:alta B60205
 prio:media FBCA04
 prio:baixa FEF2C0
+status:doing 5319E7
 LABELS
-echo "  labels: type:*, prio:* (adicione area:* conforme o projeto)"
+echo "  labels: type:*, prio:*, status:doing (adicione area:* conforme o projeto)"
 
 # 3. Board no GitHub Projects (espelho do docs/roadmap.md)
 CONF="scripts/board.conf"
@@ -54,6 +57,7 @@ else
   printf 'OWNER=%s\nPROJECT_NUMBER=%s\n' "$OWNER" "$NUM" > "$CONF"
   echo "  board criado: projeto #$NUM (salvo em $CONF; faça commit desse arquivo)"
   echo "  falta na interface: visões Board (por Etapa), Backlog (tabela por Ordem) e Roadmap (por Milestone)"
+  echo "  falta no repo: secret PROJECT_TOKEN para o Action de sync (veja o README)"
 fi
 
 # 4. Branch órfã pr-assets para prints de teste

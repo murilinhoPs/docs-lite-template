@@ -6,13 +6,17 @@
 
 - **Tudo é documentado em `docs/`:** PRD, roadmap, tasks, ADRs e design.
 - **Issues são só registro:** número, labels, milestone e link para a task em `docs/tasks/`.
-- **O board no Projects é um espelho do `docs/roadmap.md`:** `./scripts/sync-board.sh` copia
+- **O board no Projects é um espelho do `docs/roadmap.md`:** o Action
+  [`sync-board.yml`](.github/workflows/sync-board.yml) roda `./scripts/sync-board.sh`, que copia
   status (Etapa) e ordem do roadmap para o board. Mude o roadmap, nunca o board.
+- **Funciona no Claude Code local e na nuvem:** durante uma task o Claude só usa a API REST do
+  repositório (`create-issue.sh`, `set-status.sh`, `open-pr.sh`), que as sessões na nuvem aceitam.
 - **O Claude Code segue o [`CLAUDE.md`](CLAUDE.md):** implementa uma task por vez, na ordem do roadmap.
 
 Ciclo de uma task:
 
-1. "Implemente a próxima task" → o Claude abre a issue, cria `task/NNN-<slug>` e implementa com commits locais.
+1. "Implemente a próxima task" → o Claude abre a issue, cria `task/NNN-<slug>`, põe a label
+   `status:doing` na issue e implementa com commits locais.
 2. Você testa contra os critérios de aceite.
 3. (Opcional) "Teste você também" → o Claude testa e salva prints na branch `pr-assets`.
 4. "Pode abrir o PR" → push da branch e PR com `Closes #N`.
@@ -30,13 +34,48 @@ cd meu-projeto
 
 Antes, dê ao gh acesso a Projects: `gh auth refresh -s project`.
 
+O `bootstrap.sh` roda **só localmente**, com o `gh` do usuário logado: ele usa GraphQL
+(`gh project`, `gh label`, `gh repo edit`), que as sessões do Claude Code na nuvem não têm.
+
 O `bootstrap.sh` cria o que o template não copia: milestones, labels, board no Projects
 (campos Etapa e Ordem, número salvo em `scripts/board.conf`), branch `pr-assets`, worktree
 de prints, squash-only e proteção da `main`. Pode rodar de novo: ele pula o que já existe.
 
+## Configurando o sync do board
+
+O board é atualizado pelo Action [`sync-board.yml`](.github/workflows/sync-board.yml):
+
+| Evento | De onde vem a Etapa |
+|---|---|
+| push na `main` que muda `docs/roadmap.md` (merge) | roadmap da `main` |
+| PR aberto/atualizado que muda `docs/roadmap.md` | roadmap do head do PR (é assim que `review` aparece) |
+| label `status:doing` adicionada/removida numa issue | roadmap da `main` + label |
+| Run workflow (manual) | roadmap da `main` |
+
+Além do roadmap, o sync olha o estado do GitHub: task com PR aberto (`Closes #N`) aparece como
+`review`, e task `todo` cuja issue tem a label `status:doing` aparece como `doing`. A label é
+posta pelo `./scripts/set-status.sh` quando a task começa (a branch dela só sobe no PR) e tirada
+quando ela vai para `review`. No Claude Code local, `./scripts/sync-board.sh --auto` também
+sincroniza na hora; nas sessões na nuvem ele não faz nada e o Action cuida do board.
+
+O `GITHUB_TOKEN` padrão do Action não acessa Projects de usuário, então ele usa um token seu:
+
+1. Crie um token em GitHub → Settings → Developer settings:
+   - **classic**, com os escopos `project` e `repo`; ou
+   - **fine-grained**, com acesso ao repositório (Issues e Pull requests: read) e, em
+     Account permissions, **Projects: read and write**.
+   Se o fine-grained não enxergar o board da sua conta, use o classic.
+2. No repositório: Settings → Secrets and variables → Actions → New repository secret,
+   nome `PROJECT_TOKEN`, valor = o token.
+
+Sem `scripts/board.conf` ou sem o secret, o Action termina verde com um aviso: o template
+recém-criado não fica com CI vermelho.
+
 Depois:
 
+- [ ] Rodar `./scripts/bootstrap.sh` localmente (não funciona numa sessão na nuvem)
 - [ ] Commit do `scripts/board.conf` gerado pelo bootstrap
+- [ ] Criar o token e o secret `PROJECT_TOKEN` (veja "Configurando o sync do board")
 - [ ] Criar as visões do board na interface do Projects:
       **Board** agrupado por Etapa · **Backlog** em tabela ordenada por Ordem · **Roadmap** por Milestone
 - [ ] Criar labels `area:*` do projeto, se fizer sentido (`gh label create "area:ui" --color C5DEF5`)
@@ -46,6 +85,8 @@ Depois:
       (ou importar docs que você já tem, veja abaixo)
 - [ ] Ajustar `docs/qa/print-rules.md` para a plataforma
 - [ ] Apagar `scripts/publish-template.sh` (só serve para o template)
+
+Os scripts têm testes com `gh` simulado: `./scripts/tests/run.sh` (precisa de `jq` e `yq`).
 
 ## Importando docs que você já tem
 

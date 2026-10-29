@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# gh simulado para os testes. Registra cada chamada em $GH_LOG e responde a
+# partir dos JSON em $GH_STATE, imitando uma sessão do Claude Code na nuvem:
+#   - gh api só aceita rotas repos/$GH_REPO/... (as outras dão 403);
+#   - gh project só funciona com GH_PROJECTS=1 (modo local / Action);
+#   - qualquer outro comando (gh issue, gh pr, gh repo...) dá 403 de GraphQL.
+set -euo pipefail
+
+S="$GH_STATE"
+echo "gh $*" >> "$GH_LOG"
+
+graphql_403() { echo "HTTP 403: GitHub GraphQL is not available from Claude Code sessions" >&2; exit 1; }
+
+# Separa o filtro -q/--jq dos outros argumentos.
+JQ=""
+args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -q | --jq) JQ="$2"; shift 2 ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+set -- "${args[@]}"
+out() { if [ -n "$JQ" ]; then jq -r "$JQ"; else cat; fi; }
+next_number() { local n; n="$(cat "$S/counter")"; echo $((n + 1)) > "$S/counter"; echo $((n + 1)); }
+
+cmd="$1"; shift
+case "$cmd" in
+  project)
+    [ "${GH_PROJECTS:-0}" = 1 ] || graphql_403
+    sub="$1"; shift
+    case "$sub" in
+      list) echo '{"projects":[]}' | out ;;
+      view) echo '{"id":"PVT_1"}' | out ;;
+      field-list) cat "$S/fields.json" | out ;;
+      item-list) cat "$S/items.json" | out ;;
+      item-add)
+        url=""
+        while [ $# -gt 0 ]; do [ "$1" = --url ] && url="$2"; shift; done
+        n="${url##*/}"
+        id="PVTI_$n"
+        jq --arg id "$id" --argjson n "$n" --arg repo "$GH_REPO" \
+          '.items += [{id: $id, content: {type: "Issue", repository: $repo, number: $n}}]' \
+          "$S/items.json" > "$S/tmp" && mv "$S/tmp" "$S/items.json"
+        jq -n --arg id "$id" '{id: $id}' | out ;;
+      item-edit) echo '{}' ;;
+      *) echo "project $sub não simulado" >&2; exit 1 ;;
+    esac
+    exit 0 ;;
+  api) ;;
+  *) graphql_403 ;;
+esac
+
+# gh api [-X M] [--paginate] [-f k=v] [-F k=v] <rota>
+method=""
+route=""
+fields=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -X | --method) method="$2"; shift 2 ;;
+    -f | -F | --field | --raw-field) fields+=("$2"); shift 2 ;;
+    --paginate) shift ;;
+    *) route="$1"; shift ;;
+  esac
+done
+[ -n "$method" ] || { [ ${#fields[@]} -gt 0 ] && method=POST || method=GET; }
+
+case "$route" in
+  "repos/$GH_REPO/"*) ;;
+  *) echo "HTTP 403: sessions are bound to their configured repositories ($route)" >&2; exit 1 ;;
+esac
+echo "API $method $route" >> "$GH_LOG"
+
+path="${route#repos/"$GH_REPO"/}"
+query=""
+[[ "$path" == *\?* ]] && { query="${path#*\?}"; path="${path%%\?*}"; }
+param() { tr '&' '\n' <<<"$query" | sed -n "s/^$1=//p"; }
+
+# Campos -f/-F → objeto JSON (k[]=v vira array, @arquivo lê o arquivo, -F numérico vira número).
+body='{}'
+for f in "${fields[@]+"${fields[@]}"}"; do
+  k="${f%%=*}"
+  v="${f#*=}"
+  [[ "$v" == @* ]] && v="$(cat "${v#@}")"
+  if [[ "$k" == *"[]" ]]; then
+    body="$(jq --arg k "${k%[]}" --arg v "$v" '.[$k] += [$v]' <<<"$body")"
+  elif [[ "$v" =~ ^[0-9]+$ ]]; then
+    body="$(jq --arg k "$k" --argjson v "$v" '.[$k] = $v' <<<"$body")"
+  else
+    body="$(jq --arg k "$k" --arg v "$v" '.[$k] = $v' <<<"$body")"
+  fi
+done
+echo "$body" > "$S/last-body.json"
+
+save() { mv "$S/tmp" "$S/$1"; }
+
+case "$method $path" in
+  "GET milestones") cat "$S/milestones.json" | out ;;
+  "GET issues")
+    label="$(param labels)"
+    jq --arg l "$label" '[.[] | select($l == "" or any(.labels[]; .name == $l))]' "$S/issues.json" | out ;;
+  "POST issues")
+    n="$(next_number)"
+    jq --argjson n "$n" --argjson b "$body" \
+      '. += [{number: $n, title: $b.title, body: $b.body, milestone: $b.milestone,
+              labels: [($b.labels // [])[] | {name: .}], state: "open"}]' \
+      "$S/issues.json" > "$S/tmp" && save issues.json
+    jq --argjson n "$n" '.[] | select(.number == $n)' "$S/issues.json" | out ;;
+  "POST issues/"*/labels)
+    n="${path#issues/}"; n="${n%/labels}"
+    jq --argjson n "$n" --argjson b "$body" \
+      'map(if .number == $n then .labels = (.labels + [$b.labels[] | {name: .}] | unique) else . end)' \
+      "$S/issues.json" > "$S/tmp" && save issues.json
+    jq --argjson n "$n" '.[] | select(.number == $n) | .labels' "$S/issues.json" | out ;;
+  "DELETE issues/"*/labels/*)
+    n="${path#issues/}"; n="${n%%/*}"
+    l="${path##*/labels/}"
+    jq -e --argjson n "$n" --arg l "$l" 'any(.[]; .number == $n and any(.labels[]; .name == $l))' \
+      "$S/issues.json" >/dev/null || { echo "HTTP 404: Label does not exist" >&2; exit 1; }
+    jq --argjson n "$n" --arg l "$l" 'map(if .number == $n then .labels |= map(select(.name != $l)) else . end)' \
+      "$S/issues.json" > "$S/tmp" && save issues.json
+    echo '[]' | out ;;
+  "GET pulls")
+    head="$(param head)"
+    jq --arg h "$head" '[.[] | select($h == "" or .head.label == $h)]' "$S/pulls.json" | out ;;
+  "POST pulls")
+    n="$(next_number)"
+    jq --argjson n "$n" --argjson b "$body" --arg repo "$GH_REPO" \
+      '. += [{number: $n, title: $b.title, body: $b.body, base: {ref: $b.base},
+              head: {ref: $b.head, label: (($repo | split("/")[0]) + ":" + $b.head)},
+              html_url: ("https://github.com/" + $repo + "/pull/" + ($n | tostring))}]' \
+      "$S/pulls.json" > "$S/tmp" && save pulls.json
+    jq --argjson n "$n" '.[] | select(.number == $n)' "$S/pulls.json" | out ;;
+  *) echo "rota não simulada: $method $route" >&2; exit 1 ;;
+esac

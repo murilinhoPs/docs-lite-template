@@ -18,7 +18,9 @@ as issues de registro, o board (espelho do `roadmap.md`) e os PRs.
 ## Regras
 
 - A ordem das linhas em `roadmap.md` é a ordem de execução.
-- `roadmap.md` manda no board: depois de mudar o roadmap, rode `./scripts/sync-board.sh`.
+- `roadmap.md` manda no board: o Action `.github/workflows/sync-board.yml` copia o roadmap para o
+  board no PR e no merge. No Claude Code local, rode também `./scripts/sync-board.sh --auto`
+  depois de mudar o roadmap. Nunca mova cards à mão.
 - Só uma task em `doing` por vez.
 - ADR aceito não é editado: um novo ADR o substitui (`superseded by 0007`).
 - Mudou comportamento? Atualize a task ou a spec no mesmo commit.
