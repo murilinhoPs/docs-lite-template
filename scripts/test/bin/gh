@@ -113,6 +113,17 @@ case "$method $path" in
   "GET milestones")
     state="$(param state)"
     jq --arg s "${state:-open}" '[.[] | select($s == "all" or (.state // "open") == $s)]' "$S/milestones.json" | out ;;
+  "GET milestones/"*)
+    # open_issues calculado a partir das issues abertas do milestone.
+    n="${path#milestones/}"
+    jq -e --argjson n "$n" --slurpfile is "$S/issues.json" \
+      '.[] | select(.number == $n) | .open_issues = ([$is[0][] | select(.milestone.number == $n and .state == "open")] | length)' \
+      "$S/milestones.json" | out ;;
+  "PATCH milestones/"*)
+    n="${path#milestones/}"
+    jq --argjson n "$n" --argjson b "$body" 'map(if .number == $n then . + $b else . end)' \
+      "$S/milestones.json" > "$S/tmp" && save milestones.json
+    jq --argjson n "$n" '.[] | select(.number == $n)' "$S/milestones.json" | out ;;
   "POST milestones")
     jq --argjson b "$body" '. + [{number: ((map(.number) | max // 0) + 1), title: $b.title, state: "open"}]' \
       "$S/milestones.json" > "$S/tmp" && save milestones.json

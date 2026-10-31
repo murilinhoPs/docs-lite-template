@@ -6,14 +6,14 @@
 # andamento real (PR aberto, issue fechada) o sync-board.sh lê do GitHub.
 # Sincroniza o board quando ele é acessível daqui; senão, avisa e segue.
 #
-# Uso: ./scripts/task-status.sh <issue> <todo|doing|done>
+# Uso: ./scripts/task-status.sh <N> <todo|doing|done>
 set -euo pipefail
 
 # shellcheck source=scripts/lib.sh
 source "$(dirname "$0")/lib.sh"
 
-N="${1:?Uso: $0 <issue> <todo|doing|done>}"
-STATUS="${2:?Uso: $0 <issue> <todo|doing|done>}"
+N="${1:?Uso: $0 <N> <todo|doing|done>}"
+STATUS="${2:?Uso: $0 <N> <todo|doing|done>}"
 N="${N#\#}"
 [[ "$N" =~ ^[0-9]+$ ]] || { echo "Número de issue inválido: $1" >&2; exit 1; }
 [[ "$STATUS" =~ ^(todo|doing|done)$ ]] || { echo "Status inválido: $STATUS (use todo, doing ou done)" >&2; exit 1; }

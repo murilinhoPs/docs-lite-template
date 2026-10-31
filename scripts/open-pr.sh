@@ -19,7 +19,7 @@
 # --update <pr>: depois de um push num PR aberto, reescreve só o "**Head:**" e a
 # pasta de prints do corpo (PATCH), sem mexer no resto.
 #
-# Uso: ./scripts/open-pr.sh <issue> [--summary-file F] (--tests-file F | --tests "n/a: <motivo>")
+# Uso: ./scripts/open-pr.sh <N> [--summary-file F] (--tests-file F | --tests "n/a: <motivo>")
 #                          [--prints "n/a: <motivo>"] [--coauthor "Nome <email>"]... < resumo.md
 #      ./scripts/open-pr.sh --update <pr> [--prints "n/a: <motivo>"]
 # Imprime: a URL do PR.

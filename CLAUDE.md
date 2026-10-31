@@ -94,6 +94,12 @@ usa `gh project` e só roda onde o board é acessível.
 | Comentar no PR | `gh api repos/{owner}/{repo}/issues/<pr>/comments -F body=@<arquivo>` |
 | Merge travado no head | `./scripts/merge.sh <pr> <head>` |
 | Listar labels | `gh api repos/{owner}/{repo}/labels -q '.[].name'` |
+| Sincronizar o board (só onde ele é acessível) | `./scripts/sync-board.sh [--auto]` |
+| Saber se o PR é só de docs | `./scripts/docs-only.sh [base] [head]` |
+| Conferir Head e prints (o check `pr-gate` roda) | `GITHUB_EVENT_PATH=<evento.json> ./scripts/pr-gate.sh` |
+| Configurar um projeto novo (uma vez, só local, pelo usuário) | `./scripts/bootstrap.sh` |
+| Publicar este template (só no repo do template) | `./scripts/publish-template.sh [nome]` |
+| Rodar os testes dos scripts | `./scripts/test/run.sh` |
 
 ## Issues
 

@@ -186,7 +186,10 @@ Issue "fila" (opcional): uma issue `type:chore` que lista o trabalho que depende
 não tem à mão (ex.: Mac para testar iOS). Quando um AC ou print não puder ser feito por isso, o PR
 diz `n/a: <motivo> — #<fila>`.
 
-Os scripts têm testes com `gh` simulado: `./scripts/test/run.sh` (precisa de `jq` e `yq`).
+Os scripts têm testes com `gh` simulado: `./scripts/test/run.sh` (precisa de `jq`, `yq` e `python3`
+com `yaml`). Ele roda também o teste de fumaça `./scripts/test/smoke.sh`, que percorre o fluxo de
+um projeto novo de ponta a ponta. A matriz critério de aceite → teste fica em
+[`scripts/test/CA.md`](scripts/test/CA.md).
 
 ## Preparando o projeto: `/preparar`
 
@@ -195,8 +198,8 @@ preenche as lacunas entrevistando você. O estado fica em [`docs/preparo.md`](do
 um checklist de 15 itens (8 que **travam** o planejamento e 7 que **ajudam**); abra-o antes para
 saber o que separar.
 
-1. Coloque o material numa pasta `_import/` (PRD, briefing, notas, PDFs, telas, demo em HTML) e
-   rode `/preparar` (ou peça "importe meus docs"). Sem material, ele começa pelo que há em `docs/`.
+1. Coloque o material na pasta `_import/` (já vem no template, vazia, só com um `.gitkeep`): PRD,
+   briefing, notas, PDFs, telas, demo em HTML. Depois rode `/preparar` (ou peça "importe meus docs"). Sem material, ele começa pelo que há em `docs/`.
 2. **Inventário:** ele lê tudo e marca cada item do checklist como `tem`, `parcial`, `falta` ou
    `n/a`, com a evidência, e anota as contradições entre as fontes.
 3. **Plano:** mostra o checklist, o plano de organização dos arquivos (o que vai para onde) e a

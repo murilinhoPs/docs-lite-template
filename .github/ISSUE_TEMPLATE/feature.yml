@@ -8,7 +8,7 @@ body:
       value: |
         A issue descreve a mudança; a spec (`docs/specs/<feature>.md`) descreve como a feature funciona hoje.
         AC novo nasce na spec, com o próximo ID livre da feature, e é citado aqui.
-        Depois de criar, inclua a issue no roadmap: `./scripts/new-issue.sh --existing <N> [--after <issue>]`.
+        Depois de criar, inclua a issue no roadmap: `./scripts/new-issue.sh --existing <N> [--after <N>]`.
   - type: input
     id: spec
     attributes:

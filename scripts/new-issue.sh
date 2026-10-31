@@ -7,8 +7,8 @@
 #
 # Uso:
 #   ./scripts/new-issue.sh --title "[feat] ..." --body-file corpo.md --milestone "M1 — <nome>" \
-#     --labels "type:feature,area:x" [--after <issue>]
-#   ./scripts/new-issue.sh --existing <N> [--after <issue>]   # issue que já existe (ex.: bug)
+#     --labels "type:feature,area:x" [--after <N>]
+#   ./scripts/new-issue.sh --existing <N> [--after <N>]   # issue que já existe (ex.: bug)
 # Imprime: o número da issue.
 set -euo pipefail
 
@@ -52,7 +52,7 @@ if [ -n "$EXISTING" ]; then
   TITLE="$(jq -r .title <<<"$ISSUE_JSON")"
   BODY="$(jq -r '.body // ""' <<<"$ISSUE_JSON")"
   MS_TITLE="$(jq -r '.milestone.title // empty' <<<"$ISSUE_JSON")"
-  [ -n "$MS_TITLE" ] || [ -n "$AFTER" ] || { echo "A issue #$N não tem milestone: use --after <issue>." >&2; exit 1; }
+  [ -n "$MS_TITLE" ] || [ -n "$AFTER" ] || { echo "A issue #$N não tem milestone: use --after <N>." >&2; exit 1; }
 else
   [ -n "$TITLE" ] && [ -n "$BODY_FILE" ] && [ -n "$MILESTONE" ] && [ -n "$LABELS" ] || usage
   [ -f "$BODY_FILE" ] || { echo "Arquivo não encontrado: $BODY_FILE" >&2; exit 1; }

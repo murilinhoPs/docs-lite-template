@@ -34,4 +34,4 @@ doc como histórico (`status: encerrado`); depois disso ele não é mais atualiz
 
 ## Ordem sugerida
 
-1. #<issue> <título>
+1. #<N> <título>

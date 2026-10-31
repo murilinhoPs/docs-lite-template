@@ -24,14 +24,15 @@ PM. Faz o pós-merge: confere, sincroniza e decide o que vira trabalho novo.
    Os aprovados viram issues com `prio:baixa`, **sem** linha no roadmap (o próximo `/planejar`
    decide onde entram, com `./scripts/new-issue.sh --existing <N>`):
    `gh api repos/{owner}/{repo}/issues -f title="[chore] ..." -F body=@<corpo.md> -f "labels[]=type:chore" -f "labels[]=prio:baixa"`.
-4. **Fim de milestone.** Se essa era a última issue aberta do milestone (todas as linhas dele no
-   roadmap `done` e `gh api repos/{owner}/{repo}/milestones/<n> -q .open_issues` é `0`):
+4. **Fim de milestone** (`<ms>` = número do milestone no GitHub, `.milestone.number` da issue).
+   Se essa era a última issue aberta do milestone (todas as linhas dele no
+   roadmap `done` e `gh api repos/{owner}/{repo}/milestones/<ms> -q .open_issues` é `0`):
    1. Mostre o **critério de saída** de `docs/milestones/m<n>.md` e peça ao usuário que confirme
       que foi atingido. Se não foi, pare: o que falta vira issue pelo `/planejar M<n>`.
    2. **M0:** pergunte o **go/no-go** e o porquê (o que o spike provou ou não).
    3. Feche o milestone no GitHub guardando o encerramento na descrição dele (é só REST: nenhum
       arquivo muda aqui, a `main` é protegida):
-      `gh api -X PATCH repos/{owner}/{repo}/milestones/<n> -f state=closed -F description=@<encerramento.md>`,
+      `gh api -X PATCH repos/{owner}/{repo}/milestones/<ms> -f state=closed -F description=@<encerramento.md>`,
       com o `encerramento.md` assim:
       ```
       Encerrado em AAAA-MM-DD.

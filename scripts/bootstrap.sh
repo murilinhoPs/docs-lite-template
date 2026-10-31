@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Roda UMA vez em cada projeto novo criado a partir do template, LOCALMENTE,
 # com o gh do usuário logado. Não funciona nas sessões do Claude Code na nuvem
-# (usa GraphQL: gh repo view, gh label, gh project).
+# (usa GraphQL: gh label, gh project, gh repo edit).
 # Cria o que o "Use this template" não copia: o milestone M0, labels, a issue de
 # setup (com a linha no roadmap), board no Projects, branch pr-assets e
 # configurações de merge/proteção.
@@ -11,7 +11,10 @@
 # Para o board: gh auth refresh -s project
 set -euo pipefail
 
-REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
+
+REPO="$(repo_slug)"
 echo "Configurando $REPO"
 
 # 1. Só o milestone M0 (os outros nascem um por vez no /planejar M<n>)

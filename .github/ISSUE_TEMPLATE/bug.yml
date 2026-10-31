@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Depois de criar, inclua a issue no roadmap: `./scripts/new-issue.sh --existing <N> [--after <issue>]`.
+        Depois de criar, inclua a issue no roadmap: `./scripts/new-issue.sh --existing <N> [--after <N>]`.
   - type: input
     id: spec
     attributes:

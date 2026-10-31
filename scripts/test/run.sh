@@ -6,66 +6,8 @@
 # Uso: ./scripts/test/run.sh
 set -euo pipefail
 
-SRC="$(git rev-parse --show-toplevel)"
-STUB="$SRC/scripts/test/bin"
-WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
-export GH_REPO=acme/proj
-unset GITHUB_REPOSITORY
-
-pass=0
-fail=0
-ok() { echo "  ok    $1"; pass=$((pass + 1)); }
-ko() { echo "  FALHA $1"; fail=$((fail + 1)); }
-check() { local name="$1"; shift; if "$@" >/dev/null 2>&1; then ok "$name"; else ko "$name"; fi; }
-
-# Cria um repo de teste em $WORK/<nome> e entra nele.
-setup() {
-  local dir="$WORK/$1"
-  mkdir -p "$dir/repo" "$dir/state"
-  git -C "$SRC" ls-files -co --exclude-standard -z | (cd "$SRC" && xargs -0 cp --parents -t "$dir/repo")
-  rm -f "$dir/repo/scripts/board.conf"
-  git init -q --bare "$dir/remote.git"
-  cd "$dir/repo"
-  git init -q -b main
-  git config user.email t@t
-  git config user.name t
-  git config commit.gpgsign false
-  git config push.negotiate false
-  git remote add origin https://github.com/acme/proj.git
-  git config "url.$dir/remote.git.pushInsteadOf" https://github.com/acme/proj.git
-  # O fetch também vai para o bare (o get-url de origin continua mostrando o GitHub).
-  git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
-  git config "url.$dir/remote.git.insteadOf" https://github.com/acme/proj.git
-  git add -A && git commit -qm init && git push -q -u origin main
-
-  export GH_STATE="$dir/state" GH_LOG="$dir/state/gh.log" GH_LOCAL=0
-  : > "$GH_LOG"
-  echo 0 > "$GH_STATE/counter"
-  echo '[{"number":3,"title":"M0 — Fundação e spike"},{"number":4,"title":"M1 — MVP"}]' > "$GH_STATE/milestones.json"
-  echo '[]' > "$GH_STATE/issues.json"
-  echo '[]' > "$GH_STATE/pulls.json"
-  echo '{"items":[]}' > "$GH_STATE/items.json"
-  cat > "$GH_STATE/fields.json" <<'JSON'
-{"fields":[
-  {"id":"F_ETAPA","name":"Etapa","options":[{"id":"O_todo","name":"todo"},{"id":"O_doing","name":"doing"},{"id":"O_review","name":"review"},{"id":"O_done","name":"done"}]},
-  {"id":"F_ORDEM","name":"Ordem"}]}
-JSON
-}
-
-PATH="$STUB:$PATH"
-R=docs/roadmap.md
-count() { grep -c -- "$1" "$GH_LOG" || true; }
-# Linhas de issue do roadmap, sem espaços: "1|#2|[feat] A|todo|specs/a.md|" etc.
-rows() { grep -E '^\|[^|]*\|[ ]*#[0-9]+' "$R" | sed -E 's/^\| *//; s/ *\| *$//; s/ *\| */|/g'; }
-section() { awk -v h="### $1" '/^## Issues por milestone/ { iss = 1 } $0 == h && iss { s = 1; next } /^##/ { s = 0 } s && /\| #[0-9]/' "$R" | sed -E 's/^\| *//; s/ *\| *$//; s/ *\| */|/g'; }
-# Toda chamada à API usa só rotas do repo e nenhum comando GraphQL foi usado.
-only_repo_routes() {
-  ! grep '^API ' "$GH_LOG" | grep -qv "^API [A-Z]* repos/acme/proj/" &&
-    ! grep -qE '^gh (issue|pr|repo|label) ' "$GH_LOG"
-}
-no_graphql() { only_repo_routes && ! grep -q '^gh project ' "$GH_LOG"; }
-body() { printf '**Spec:** docs/specs/%s.md  (F1)\n**Área:** area:x\n\n## Critérios de aceite\n- [ ] AC-F1-01: entra\n- [ ] AC-F1-02: sai\n' "$1" > "$GH_STATE/$1.md"; echo "$GH_STATE/$1.md"; }
+# shellcheck source=scripts/test/helpers.sh
+source "$(dirname "$0")/helpers.sh"
 
 echo "repo_slug"
 (
@@ -510,7 +452,7 @@ check "template do doc de milestone (CA-G4)" \
 check "Como verificar no molde e no form de issue de feature" \
   bash -c 'grep -qx "## Como verificar" docs/prompts/issue-feature.md && grep -q "label: Como verificar" .github/ISSUE_TEMPLATE/feature.yml'
 check "/fechar: critério de saída, fecha o milestone e guarda o encerramento e o go/no-go nele (CA-G7)" \
-  bash -c 'f=.claude/commands/fechar.md; grep -q "critério de saída" "$f" && grep -q "milestones/<n> -f state=closed -F description=@" "$f" && grep -q "go/no-go: go | no-go" "$f" && ! grep -q "Encerrar M" "$f"'
+  bash -c 'f=.claude/commands/fechar.md; grep -q "critério de saída" "$f" && grep -q "milestones/<ms> -f state=closed -F description=@" "$f" && grep -q "go/no-go: go | no-go" "$f" && ! grep -q "Encerrar M" "$f"'
 check "/planejar M<n+1> registra o encerramento no PR dele: doc encerrado e ADR do go/no-go" \
   bash -c 'f=.claude/commands/planejar.md; grep -q "Critério de saída: confirmado" "$f" && grep -q "go/no-go: go" "$f" && grep -q "status: encerrado" "$f" && grep -q "ADR \`Aceita\`" "$f"'
 check "CLAUDE.md lista o new-milestone.sh" grep -q '| Criar um milestone (etapa 2) | `./scripts/new-milestone.sh "M<n> — <nome>"` |' CLAUDE.md
@@ -521,6 +463,35 @@ GRAPHQL_CMDS="gh (issue|pr) (create|edit|view)|gh repo"" view"
 check "nenhum comando gh de GraphQL nos docs e scripts" \
   bash -c '! grep -rnE "$0" CLAUDE.md docs/ .claude/ scripts/ --exclude=bootstrap.sh' "$GRAPHQL_CMDS"
 check "nenhuma referência à pasta antiga de tasks" bash -c '! grep -rn "docs/""tasks" . --exclude-dir=.git'
+
+echo "consistência (CA-H1, CA-H2)"
+cd "$SRC"
+check "todo ./scripts/X citado no CLAUDE.md, READMEs e comandos existe e é executável" \
+  bash -c 'for f in $(grep -rhoE "\./scripts/[a-z/-]+\.sh" CLAUDE.md README.md docs .claude | sort -u); do [ -x "$f" ] || { echo "$f"; exit 1; }; done'
+check "todo script de scripts/ está na tabela do CLAUDE.md (menos lib.sh e helpers)" \
+  bash -c 'for f in scripts/*.sh scripts/test/run.sh; do [ "$f" = scripts/lib.sh ] && continue; grep -E "^\|" CLAUDE.md | grep -qF "./$f" || { echo "$f"; exit 1; }; done'
+check "os 8 comandos citados existem em .claude/commands, e o revisor em .claude/agents" \
+  bash -c 'for c in preparar planejar implementar qa abrir-pr revisar corrigir fechar; do [ -f ".claude/commands/$c.md" ] && grep -q "/$c" CLAUDE.md || { echo "$c"; exit 1; }; done; [ -f .claude/agents/revisor.md ] && test "$(ls .claude/commands | wc -l)" = 8'
+check "frases-atalho apontam para os comandos certos" \
+  bash -c 'grep -qE "^\| .*\`/preparar.*\"importe meus docs\"" CLAUDE.md && grep -qE "^\| .*\`/implementar.*\"próxima task\"" CLAUDE.md && grep -qE "^\| .*\`/abrir-pr.*\"pode abrir o PR\"" CLAUDE.md && grep -qE "^\| .*\`/revisar.*\"revise o PR\"" CLAUDE.md'
+check "AGENTS.md é link para o CLAUDE.md num clone novo" \
+  bash -c 'git clone -q "$0" "$1/clone" && cd "$1/clone" && test -L AGENTS.md && test "$(readlink AGENTS.md)" = CLAUDE.md && cmp -s AGENTS.md CLAUDE.md' "$SRC" "$WORK"
+check "placeholders no mesmo estilo (<N>, <pr>, <head>, <sha7>, M<n>, <ms>)" \
+  bash -c '! grep -rnE "#<issue>|--after <issue>|(^|[^N])NNN-<|milestones/<n>|<sha>[^7]" CLAUDE.md README.md docs .claude .github scripts/*.sh'
+check "bash -n em todos os scripts" bash -c 'for f in scripts/*.sh scripts/test/*.sh scripts/test/bin/gh; do bash -n "$f" || exit 1; done'
+check "workflows e issue forms são YAML válido (CA-4)" \
+  python3 -c 'import sys, yaml; [yaml.safe_load(open(f)) for f in sys.argv[1:]]' .github/workflows/*.yml .github/ISSUE_TEMPLATE/*.yml
+check "templates da Parte A: spec, índice de ADR, Features no PRD, PR template (CA-6)" \
+  bash -c 'grep -qx "## Critérios de aceite vigentes" docs/specs/_template.md && grep -q "^feature: F<n>" docs/specs/_template.md && grep -q "^| .Proposta. |" docs/adr/README.md && grep -q "^| ID | Feature | Prioridade | Spec | Área |" docs/prd.md && grep -q "^\*\*Head:\*\*" .github/pull_request_template.md && grep -qx "## Registro" .github/pull_request_template.md'
+check "nenhum arquivo solto na raiz (CA-H5)" \
+  bash -c 'test "$(git ls-files | grep -v / | sort | paste -sd " ")" = ".gitignore AGENTS.md CLAUDE.md README.md"'
+
+echo "fumaça ponta a ponta (CA-H3)"
+if "$SRC/scripts/test/smoke.sh" > "$WORK/smoke.out" 2>&1; then
+  ok "$(tail -1 "$WORK/smoke.out")"
+else
+  ko "fumaça"; sed 's/^/    /' "$WORK/smoke.out"
+fi
 
 echo
 echo "$pass ok, $fail falha(s)"
