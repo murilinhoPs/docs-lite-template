@@ -12,7 +12,11 @@ material numa pasta `_import/` na raiz. Se quiser saber o que separar, abra `doc
 1. Rode `/preparar` (ou peça "importe meus docs de `_import/`") e responda às rodadas de
    perguntas até o `docs/preparo.md` chegar em `fase: pronto`. Parar no meio é seguro: o próximo
    `/preparar` retoma de onde parou. No fim, ele abre o PR `[docs] Preparo do projeto`.
-2. Faça o merge do PR e rode `/planejar M1`.
+2. Faça o merge do PR e rode `/planejar` (visão geral): ele escreve os milestones no
+   `docs/roadmap.md` e abre o PR `[docs] Roadmap: visão geral`.
+3. Faça o merge e rode `/planejar M0` (fundação e spike): issues só do M0, num PR de docs.
+
+O fluxo inteiro: `/preparar` → merge → `/planejar` (visão geral) → merge → `/planejar M0` → merge → ciclo das tasks do M0 → `/fechar` (go/no-go) → `/planejar M1` → ciclo → `/fechar` → `/planejar M2` ….
 
 Depois disso, o ciclo de cada task é `/implementar` → (`/qa`) → `/abrir-pr` → (`/revisar` →
 `/corrigir`) → merge → `/fechar`.
@@ -28,5 +32,6 @@ com o material em `_import/`. Respeite as paradas do comando: mostre o plano e e
 se continuamos ao fim de cada rodada. Não invente conteúdo e não crie issues.
 
 Quando `docs/preparo.md` estiver em `fase: pronto` e o PR tiver sido mergeado, siga
-`.claude/commands/planejar.md` para o milestone M1.
+`.claude/commands/planejar.md` sem argumento (visão geral dos milestones). Depois do merge do
+roadmap, siga o mesmo arquivo para o M0 (`/planejar M0`).
 ````

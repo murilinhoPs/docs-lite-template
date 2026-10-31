@@ -6,7 +6,8 @@
 | Comportamento atual de cada feature | `docs/specs/<feature>.md` | Como funciona **hoje** |
 | Decisões | `docs/adr/` | Por que foi feito assim |
 | Trabalho a fazer | **Issues do GitHub** | O que falta mudar |
-| Ordem de execução e status | `docs/roadmap.md` | O que vem agora |
+| Milestones (visão geral) e ordem e status das issues | `docs/roadmap.md` | O que vem agora |
+| Plano do milestone em andamento | `docs/milestones/m<n>.md` | O que entra neste milestone |
 | Visualização | Board do Projects | Espelho do roadmap + andamento no GitHub |
 
 A spec descreve o presente, nunca planos. A issue descreve a mudança. Um PR que muda
@@ -24,15 +25,30 @@ Siga o comando; as frases ao lado continuam valendo e levam ao mesmo comando.
 | Fase | Comando | Frase | Para quando |
 |---|---|---|---|
 | Preparar os docs | `/preparar [pasta]` | "importe meus docs", "prepare o projeto" | `docs/preparo.md` em `fase: pronto` e PR de docs aberto |
-| Planejar um milestone | `/planejar <milestone>` | "planeje o M1" | PR de planejamento aberto |
+| Planejar: visão geral | `/planejar` | "planeje o roadmap" | PR `[docs] Roadmap: visão geral` aberto |
+| Planejar: um milestone | `/planejar M<n>` | "planeje o M1" | PR `[docs] Planejar M<n>` aberto, issues criadas |
 | Implementar | `/implementar [issue]` | "próxima task", "implemente a issue N" | commits locais, antes do push |
 | Testar | `/qa [issue]` | "teste você também" | prints na `pr-assets` e relatório |
 | Abrir o PR | `/abrir-pr [issue]` | "pode abrir o PR" | PR aberto com o head no corpo |
 | Revisar | `/revisar [pr]` | "revise o PR" | review postado (subagente `revisor`) |
 | Corrigir | `/corrigir [pr ou issue]` | "corrija" | correções commitadas (e enviadas) |
-| Fechar | `/fechar [pr]` | "fechei o merge", "feche a task" | board, nits e milestone atualizados |
+| Fechar | `/fechar [pr]` | "fechei o merge", "feche a task" | board e nits atualizados; no fim do milestone, critério de saída e go/no-go |
 
-Fluxo: `/preparar` (até nada travar) → `/planejar` → ciclo das tasks (`/implementar` … `/fechar`).
+Fluxo: `/preparar` → merge → `/planejar` (visão geral) → merge → `/planejar M0` → merge → ciclo das
+tasks do M0 (`/implementar` … `/fechar`) → `/fechar` (go/no-go) → `/planejar M1` → ciclo → `/fechar`
+→ `/planejar M2` …
+
+## Planejamento em duas etapas
+
+- **Etapa 1, visão geral** (`/planejar`): a seção Milestones do `roadmap.md` lista todos os
+  milestones (`M<n> — <nome>`: objetivo, escopo em `F#`, critério de saída, dependências,
+  tamanho), sem tasks e sem nada no GitHub. O M0 é sempre **Fundação e spike**, com go/no-go.
+- **Etapa 2, um milestone** (`/planejar M<n>`): só quando ele é o próximo (o anterior encerrado),
+  escreve `docs/milestones/m<n>.md`, cria o milestone no GitHub e as issues, num PR de docs.
+- **Nunca existem issues, nem milestone no GitHub, de milestones futuros.** O `bootstrap.sh` cria
+  só o M0; os outros nascem no `/planejar M<n>`.
+- Uma feature `F#` entra em no máximo um milestone; features `Won't` ficam fora. Milestone novo
+  entra só no `roadmap.md` (etapa 1) e no GitHub (etapa 2); o PRD aponta para o roadmap.
 
 ## Status: o roadmap guarda o destino, o GitHub mostra o andamento
 
@@ -69,6 +85,7 @@ usa `gh project` e só roda onde o board é acessível.
 | Para | Use |
 |---|---|
 | Ler uma issue / um PR | `gh api repos/{owner}/{repo}/issues/<N>` / `gh api repos/{owner}/{repo}/pulls/<pr>` |
+| Criar um milestone (etapa 2) | `./scripts/new-milestone.sh "M<n> — <nome>"` |
 | Criar uma issue (e a linha no roadmap) | `./scripts/new-issue.sh --title ... --body-file ... --milestone ... --labels ... [--after <N>]` |
 | Pôr no roadmap uma issue que já existe | `./scripts/new-issue.sh --existing <N> [--after <N>]` |
 | Mudar status | `./scripts/task-status.sh <N> <todo\|doing\|done>` |
@@ -88,8 +105,10 @@ usa `gh project` e só roda onde o board é acessível.
 - Labels: `type:*` sempre (`type:design` = mudança visual, exige prints); `prio:*` só se o usuário
   pedir (e `prio:baixa` nos nits aprovados no `/fechar`); `area:*` conforme as que existirem no repo.
   Não crie labels novas sem perguntar.
-- Task nova pedida no meio do caminho: proposta pelo `/planejar` (ACs na spec + issue + linha no
-  roadmap na posição indicada, com `--after`).
+- Task nova pedida no meio do caminho (feature fora do plano): proposta pelo `/planejar`, dizendo
+  em qual milestone entra. No milestone em andamento: ACs na spec + issue + linha no roadmap na
+  posição indicada (`--after`). Num milestone futuro: só o escopo (`F#`) na seção Milestones do
+  roadmap; a issue nasce no `/planejar M<n>` dele.
 - Bug reportado numa issue `type:bug`: se for da task em andamento, corrija nela (`/corrigir`);
   senão, ponha a issue no roadmap (`./scripts/new-issue.sh --existing <N>`) e pergunte onde entra.
 - Issue "fila" (opcional): uma issue `type:chore` que lista trabalho que depende de algo que não

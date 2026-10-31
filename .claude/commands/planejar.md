@@ -1,57 +1,98 @@
 ---
-description: Planeja um milestone (PM + docs) - propõe issues, ACs e mudanças de spec e, depois da aprovação, abre o PR de planejamento
-argument-hint: <milestone>
+description: Planeja em duas etapas - sem argumento escreve a visão geral dos milestones no roadmap; com M<n> detalha o próximo milestone e cria as issues dele depois da aprovação
+argument-hint: "[M<n>]"
 ---
 
 # /planejar $ARGUMENTS
 
 ## Papel
 
-PM + docs. Transforma o PRD e as specs em issues ordenadas para o milestone. Não escreve código.
+PM + docs. Planeja em duas etapas e não escreve código:
+
+1. **Visão geral** (`/planejar`): todos os milestones no `docs/roadmap.md`, só em prosa. Nada no GitHub.
+2. **Um milestone** (`/planejar M<n>`): só quando ele é o próximo, detalha o milestone e quebra
+   em issues pequenas, criadas depois do "pode seguir".
+
+Regra de ouro: **nunca existem issues (nem milestone no GitHub) de milestones futuros.**
 
 ## Argumentos
 
-`$ARGUMENTS` = o milestone (ex.: `M1 MVP` ou só `M1`). Obrigatório: sem ele, pergunte.
+`$ARGUMENTS` vazio → **Modo 1** (visão geral). `M<n>` (ex.: `M0`, `M1`) → **Modo 2** (esse milestone).
 
 ## Passos
 
-1. Confira `docs/preparo.md`: se a `fase` não for `pronto` (com o PR de preparo mergeado), pare e
-   sugira `/preparar`. Itens `trava` que ficaram `parcial` por `> Pendente:`: as issues que
-   dependem deles ficam para depois (diga quais).
-   Leia `docs/prd.md` (tabela Features), as specs em `docs/specs/`, os ADRs e o `docs/roadmap.md`.
-2. Proponha, **sem criar nada**:
-   - as issues do milestone, na ordem: título (`[feat] ...`, `[chore] ...`), área, spec, labels
-     (`type:*`, `area:*`), ACs (IDs `AC-F<n>-NN`) e posição no roadmap;
-   - para feature nova ou AC que ainda não existe na spec, o texto dos ACs novos (próximo ID
-     livre da feature) e das seções de spec que mudam;
-   - os itens `> Pendente:` que precisam da decisão do usuário.
-3. Pare e espere a aprovação. Ajuste a proposta até o "pode seguir".
-4. Depois da aprovação:
-   1. `git switch main && git pull` e `git switch -c plan/<milestone-slug>`.
-   2. Escreva ou atualize as specs (e o `prd.md`, se surgir feature nova). Milestone que não
-      existe no GitHub: `gh api repos/{owner}/{repo}/milestones -f title="<milestone>"`, e
-      acrescente-o ao `roadmap.md`, ao `prd.md` e à lista do `scripts/bootstrap.sh`.
-   3. Crie cada issue, na ordem, com o corpo no formato de `docs/prompts/issue-feature.md`:
-      `./scripts/new-issue.sh --title "[feat] ..." --body-file <corpo.md> --milestone "<milestone>" --labels "type:feature,area:<x>" [--after <issue>]`.
-      O script cria a issue e insere a linha no roadmap com status `todo`.
-   4. Commit (`docs: planejamento <milestone>`) e `git push -u origin plan/<milestone-slug>`.
-   5. Abra o PR só de docs pelo template (`.github/pull_request_template.md`, sem `Closes`,
-      `**Tipo:** só docs`, prints e testes `n/a: PR só de docs`):
-      `gh api repos/{owner}/{repo}/pulls -f head=plan/<milestone-slug> -f base=main -f title="[docs] Planejamento <milestone>" -F body=@<corpo.md>`
-      e depois `./scripts/open-pr.sh --update <pr>` para gravar o `**Head:**` (o `pr-gate` exige).
-   6. `./scripts/sync-board.sh --auto` (sem board acessível, ele avisa e segue).
-5. Pare.
+### Modo 1: `/planejar` → visão geral (etapa 1)
+
+Pré-condições: `docs/preparo.md` com `fase: pronto` (se não, avise e pergunte se segue mesmo
+assim) e a tabela Features do `docs/prd.md` preenchida.
+
+1. Leia `docs/prd.md`, as specs que existem, os ADRs, `docs/overview.md` e `docs/preparo.md`.
+2. `git switch main && git pull && git switch -c plan/roadmap`. Escreva a seção **Milestones** do
+   `docs/roadmap.md`. Para cada milestone, **só**:
+   - `### M<n> — <nome>` (travessão; o mesmo título será usado no GitHub);
+   - **Objetivo** (1 frase), **Escopo** (ids `F#`), **Critério de saída** testável
+     (ex.: "o fluxo X roda de ponta a ponta no Android"), **Depende de / decisões abertas** e
+     **Tamanho** (P, M ou G).
+3. **M0 — Fundação e spike** é sempre um spike de risco com **go/no-go** antes do M1: os riscos
+   vêm das decisões técnicas e das integrações do `preparo.md` (itens 3 e 6) e do PRD. O M0 também
+   contém a issue de setup (criada pelo `bootstrap.sh`).
+4. Cada feature `F#` entra em **no máximo um** milestone; features `Won't` ficam fora.
+   Dúvidas viram `> Pendente:` no próprio roadmap. Atualize o `updated:` do roadmap.
+5. Mostre a seção Milestones e **pare** até o "pode seguir". Ajuste até a aprovação.
+6. Depois do ok: commit (`docs: roadmap, visão geral`), `git push -u origin plan/roadmap` e um PR
+   só de docs, `[docs] Roadmap: visão geral`, pelo template (sem `Closes`, `**Tipo:** só docs`,
+   testes e prints `n/a: PR só de docs`):
+   `gh api repos/{owner}/{repo}/pulls -f head=plan/roadmap -f base=main -f title="[docs] Roadmap: visão geral" -F body=@<corpo.md>`
+   e depois `./scripts/open-pr.sh --update <pr>` para o `**Head:**`. O merge do PR é a aprovação.
+
+### Modo 2: `/planejar M<n>` → um milestone (etapa 2)
+
+0. **Pré-condições.**
+   - O milestone existe na seção Milestones do `docs/roadmap.md` (se não, sugira o Modo 1).
+   - O anterior está **encerrado**: todas as issues dele `done` e fechadas, o critério de saída
+     conferido no `/fechar` e o doc `docs/milestones/m<n-1>.md` com `status: encerrado`. Para o
+     M1, o go/no-go do M0 registrado em ADR (`Aceita`) como **go**. Para o M0, basta o roadmap
+     mergeado (a issue de setup já existe).
+   - Se não, **pare**: "só planejo o milestone que for o próximo".
+1. Releia o `roadmap.md`, o PRD, as specs, os ADRs e **o que mudou desde o milestone anterior**:
+   `git log` do milestone anterior, issues de follow-up `prio:baixa` sem linha no roadmap
+   (`gh api "repos/{owner}/{repo}/issues?state=open&labels=prio:baixa"`) e os `> Pendente:` que sobraram.
+2. Escreva `docs/milestones/m<n>.md` a partir de `docs/milestones/_template.md`, curto. AC novo
+   de feature nasce na spec da feature (`AC-F<n>-NN`, próximo ID livre); o doc só referencia.
+3. Quebre em **issues pequenas** (uma por feature ou tela), cada uma com: título `[feat] ...`,
+   área, links para o doc do milestone e a spec, ACs, prioridade (se pedida), posição no roadmap e
+   **"Como verificar"** (teste automatizado, fluxo manual, plataformas; se precisa de print →
+   `type:design`). Corpo no formato de `docs/prompts/issue-feature.md`. Follow-ups `prio:baixa`
+   que entram neste milestone vão com `./scripts/new-issue.sh --existing <N>`.
+4. Mostre o doc e a lista de issues e **pare** até o "pode seguir". Nada é criado antes.
+5. Depois do ok, numa branch `plan/m<n>` a partir da `main` atualizada:
+   1. specs novas ou alteradas e `docs/milestones/m<n>.md` (`status: planejado`);
+   2. o milestone no GitHub: `./scripts/new-milestone.sh "M<n> — <nome>"` (idempotente; no M0 o
+      `bootstrap.sh` já criou);
+   3. as issues, na ordem:
+      `./scripts/new-issue.sh --title "[feat] ..." --body-file <corpo.md> --milestone "M<n> — <nome>" --labels "type:feature,area:<x>" [--after <N>]`
+      (o script também escreve a linha `todo` no roadmap, em "Issues por milestone");
+   4. se o escopo mudou, atualize a seção Milestones do `roadmap.md` no mesmo PR;
+   5. commit (`docs: planejar M<n>`), push e PR só de docs `[docs] Planejar M<n>`, como no Modo 1
+      (`gh api .../pulls` + `./scripts/open-pr.sh --update <pr>`);
+   6. `./scripts/sync-board.sh --auto` (sem board acessível, ele avisa e segue). Não adicione
+      cards nem campos à mão.
 
 ## Onde parar
 
-- Depois da proposta (passo 3), esperando a aprovação.
-- Com o PR de planejamento aberto: passe o link do PR, a lista de issues criadas (número,
-  título, posição) e o comando de merge (`./scripts/merge.sh <pr> <head>`).
+- Modo 1: depois de mostrar a seção Milestones (esperando o "pode seguir") e com o PR
+  `[docs] Roadmap: visão geral` aberto. Passe o link e o comando de merge
+  (`./scripts/merge.sh <pr> <head>`). Próximo passo: merge e `/planejar M0`.
+- Modo 2: depois de mostrar o doc e as issues (esperando o "pode seguir") e com o PR
+  `[docs] Planejar M<n>` aberto. Passe o link, as issues criadas (número, título, posição) e o
+  comando de merge. Próximo passo: merge e `/implementar`.
 
 ## Nunca
 
-- Criar issue, branch ou arquivo antes da aprovação.
-- Inventar requisito: o que falta vira `> Pendente:` ou `TODO:`.
-- Reaproveitar ID de feature (`F<n>`) ou de AC removido.
-- Misturar código no PR de planejamento. Ajustes de spec durante uma task vão no PR da task.
-- Dar push na `main`.
+- Abrir issues ou criar milestone no GitHub de um milestone que não é o próximo.
+- No Modo 1: criar issue, milestone no GitHub ou spec.
+- Criar qualquer coisa (branch, arquivo, issue, milestone) antes do "pode seguir".
+- Usar os subcomandos do gh que usam GraphQL para issues: issues só com `./scripts/new-issue.sh`.
+- Mexer no board à mão: ele só muda pelo `./scripts/sync-board.sh`.
+- Inventar requisito: o que falta vira `> Pendente:` ou `TODO:`. Reaproveitar ID de feature ou de AC.
+- Misturar código num PR de planejamento, ou dar push na `main`.

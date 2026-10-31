@@ -42,7 +42,7 @@ setup() {
   export GH_STATE="$dir/state" GH_LOG="$dir/state/gh.log" GH_LOCAL=0
   : > "$GH_LOG"
   echo 0 > "$GH_STATE/counter"
-  echo '[{"number":3,"title":"M0 Fundação"},{"number":4,"title":"M1 MVP"}]' > "$GH_STATE/milestones.json"
+  echo '[{"number":3,"title":"M0 — Fundação e spike"},{"number":4,"title":"M1 — MVP"}]' > "$GH_STATE/milestones.json"
   echo '[]' > "$GH_STATE/issues.json"
   echo '[]' > "$GH_STATE/pulls.json"
   echo '{"items":[]}' > "$GH_STATE/items.json"
@@ -58,7 +58,7 @@ R=docs/roadmap.md
 count() { grep -c -- "$1" "$GH_LOG" || true; }
 # Linhas de issue do roadmap, sem espaços: "1|#2|[feat] A|todo|specs/a.md|" etc.
 rows() { grep -E '^\|[^|]*\|[ ]*#[0-9]+' "$R" | sed -E 's/^\| *//; s/ *\| *$//; s/ *\| */|/g'; }
-section() { awk -v h="## $1" '$0 == h { s = 1; next } /^## / { s = 0 } s && /\| #[0-9]/' "$R" | sed -E 's/^\| *//; s/ *\| *$//; s/ *\| */|/g'; }
+section() { awk -v h="### $1" '/^## Issues por milestone/ { iss = 1 } $0 == h && iss { s = 1; next } /^##/ { s = 0 } s && /\| #[0-9]/' "$R" | sed -E 's/^\| *//; s/ *\| *$//; s/ *\| */|/g'; }
 # Toda chamada à API usa só rotas do repo e nenhum comando GraphQL foi usado.
 only_repo_routes() {
   ! grep '^API ' "$GH_LOG" | grep -qv "^API [A-Z]* repos/acme/proj/" &&
@@ -83,18 +83,18 @@ echo "repo_slug"
 
 echo "new-issue.sh"
 setup new
-a="$(./scripts/new-issue.sh --title "[feat] A" --body-file "$(body a)" --milestone "M1 MVP" --labels "type:feature, area:x")"
+a="$(./scripts/new-issue.sh --title "[feat] A" --body-file "$(body a)" --milestone "M1 — MVP" --labels "type:feature, area:x")"
 b="$(./scripts/new-issue.sh --title "[chore] B" --body-file "$(body b)" --milestone M0 --labels type:chore)"
-c="$(./scripts/new-issue.sh --title "[feat] C" --body-file "$(body c)" --milestone "M1 MVP" --labels type:feature --after "$b")"
-d="$(./scripts/new-issue.sh --title "[feat] D | E" --body-file "$(body d)" --milestone "M1 MVP" --labels type:feature)"
+c="$(./scripts/new-issue.sh --title "[feat] C" --body-file "$(body c)" --milestone "M1 — MVP" --labels type:feature --after "$b")"
+d="$(./scripts/new-issue.sh --title "[feat] D | E" --body-file "$(body d)" --milestone "M1 — MVP" --labels type:feature)"
 check "imprime os números" test "$a $b $c $d" = "1 2 3 4"
 check "título, milestone e labels" test "$(jq -c '.[0] | [.title, .milestone.title, [.labels[].name]]' "$GH_STATE/issues.json")" \
-  = '["[feat] A","M1 MVP",["type:feature","area:x"]]'
+  = '["[feat] A","M1 — MVP",["type:feature","area:x"]]'
 check "corpo da issue = --body-file" test "$(jq -r '.[0].body' "$GH_STATE/issues.json")" = "$(cat "$GH_STATE/a.md")"
 check "fim do milestone e --after, com Ordem renumerada" test "$(rows | paste -sd ' ')" \
   = "1|#2|[chore] B|todo|specs/b.md| 2|#3|[feat] C|todo|specs/c.md| 3|#1|[feat] A|todo|specs/a.md| 4|#4|[feat] D / E|todo|specs/d.md|"
-check "--after de outro milestone entra logo depois dele (seção M0)" test "$(section 'M0 Fundação' | cut -d'|' -f2 | paste -sd ' ')" = "#2 #3"
-jq '. += [{"number":9,"title":"[bug] Quebrou","body":"**Spec:** docs/specs/a.md  (F1)\r\n","milestone":{"number":4,"title":"M1 MVP"},"labels":[{"name":"type:bug"}],"state":"open"}]' \
+check "--after de outro milestone entra logo depois dele (seção M0)" test "$(section 'M0 — Fundação e spike' | cut -d'|' -f2 | paste -sd ' ')" = "#2 #3"
+jq '. += [{"number":9,"title":"[bug] Quebrou","body":"**Spec:** docs/specs/a.md  (F1)\r\n","milestone":{"number":4,"title":"M1 — MVP"},"labels":[{"name":"type:bug"}],"state":"open"}]' \
   "$GH_STATE/issues.json" > "$GH_STATE/x" && mv "$GH_STATE/x" "$GH_STATE/issues.json"
 e="$(./scripts/new-issue.sh --existing 9 --after 1)"
 e2="$(./scripts/new-issue.sh --existing 9)"
@@ -105,6 +105,19 @@ check "milestone inexistente falha antes de criar" bash -c "! ./scripts/new-issu
 check "--after inexistente falha antes de criar" bash -c "! ./scripts/new-issue.sh --title '[feat] X' --body-file $GH_STATE/a.md --milestone M1 --labels type:feature --after 77"
 check "título sem [feat]/[bug]/[chore]/[docs] falha" bash -c "! ./scripts/new-issue.sh --title 'X' --body-file $GH_STATE/a.md --milestone M1 --labels type:feature"
 check "nenhuma issue criada nos erros" test "$(count 'API POST repos/acme/proj/issues$')" = "$posts"
+check "só rotas repos/acme/proj e nada de GraphQL" no_graphql
+
+echo "new-milestone.sh (CA-G5)"
+: > "$GH_LOG"
+m1="$(./scripts/new-milestone.sh "M1 — MVP")"
+m2a="$(./scripts/new-milestone.sh "M2 — Pagamentos")"
+m2b="$(./scripts/new-milestone.sh "M2 — Pagamentos")"
+check "milestone que já existe: só imprime o número, sem criar" test "$m1" = 4
+check "milestone novo: cria e imprime o número" test "$m2a" = 5
+check "idempotente: rodar de novo não cria outro" test "$m2b:$(count '^API POST repos/acme/proj/milestones$')" = "5:1"
+jq 'map(if .number == 5 then .state = "closed" else . end)' "$GH_STATE/milestones.json" > "$GH_STATE/x" && mv "$GH_STATE/x" "$GH_STATE/milestones.json"
+check "acha também milestone fechado (state=all)" test "$(./scripts/new-milestone.sh "M2 — Pagamentos"):$(count '^API POST repos/acme/proj/milestones$')" = "5:1"
+check "título fora do formato \"M<n> — <nome>\" falha" bash -c '! ./scripts/new-milestone.sh "M3 Sem travessão"'
 check "só rotas repos/acme/proj e nada de GraphQL" no_graphql
 
 echo "task-status.sh"
@@ -278,12 +291,19 @@ check "pr-gate.yml: job pr-gate em opened/reopened/synchronize/edited" \
   test "$(yq -r '.jobs | keys | join(",")' .github/workflows/pr-gate.yml):$(yq -r '(.on // .["true"]).pull_request.types | join(",")' .github/workflows/pr-gate.yml)" \
   = "pr-gate:opened,reopened,synchronize,edited"
 
-echo "bootstrap.sh (CA-C2)"
+echo "bootstrap.sh (CA-C2, CA-G5)"
 setup boot
 export GH_LOCAL=1
+echo '[]' > "$GH_STATE/milestones.json"
 sed -i 's/| F1 | <nome> | Must | \[specs\/<feature>.md\](specs\/<feature>.md) | area:<x> |/| F1 | Login | Must | x | area:auth |/' docs/prd.md
 ./scripts/bootstrap.sh >"$GH_STATE/boot.out" 2>&1 || { ko "bootstrap terminou com erro"; sed "s/^/    /" "$GH_STATE/boot.out"; }
 check "copia o projeto modelo murilinhoPs/2" grep -q '^gh project copy 2 --source-owner murilinhoPs' "$GH_LOG"
+check "cria só o milestone M0 (CA-G5)" \
+  test "$(grep -c '^API POST repos/acme/proj/milestones$' "$GH_LOG"):$(jq -c '[.[].title]' "$GH_STATE/milestones.json")" = '1:["M0 — Fundação e spike"]'
+check "issue de setup no M0, na seção Issues por milestone (CA-G1)" \
+  test "$(jq -r '.[0].milestone.title' "$GH_STATE/issues.json"):$(section 'M0 — Fundação e spike')" = "M0 — Fundação e spike:1|#1|[chore] Setup do projeto|todo|—|"
+check "roadmap gerado mantém a seção Milestones intacta" \
+  bash -c 'test "$(sed -n "/^## Milestones/,/^## Issues/p" "$0")" = "$(sed -n "/^## Milestones/,/^## Issues/p" "$1")"' "$R" "$SRC/docs/roadmap.md"
 check "squash com título e corpo do PR" \
   grep -qF 'BODY PATCH repos/acme/proj {"squash_merge_commit_title":"PR_TITLE","squash_merge_commit_message":"PR_BODY"}' "$GH_LOG"
 check "ruleset com ci e pr-gate obrigatórios, strict" test "$(jq -c '.[0].rules[] | select(.type == "required_status_checks") | .parameters | [.strict_required_status_checks_policy, [.required_status_checks[].context]]' "$GH_STATE/rulesets.json")" \
@@ -293,6 +313,8 @@ check "cria type:design e as area:* da tabela Features" \
 check "cria a issue de setup com o AC do ci.yml" grep -q 'AC-SETUP-03: `.github/workflows/ci.yml` roda lint e testes da stack' <<<"$(jq -r '.[0].body' "$GH_STATE/issues.json")"
 rm -f scripts/board.conf
 ./scripts/bootstrap.sh >"$GH_STATE/boot2.out" 2>&1
+check "rodar de novo não cria outro M0 nem outra issue de setup" \
+  test "$(jq length "$GH_STATE/milestones.json"):$(jq length "$GH_STATE/issues.json")" = "1:1"
 check "rodar de novo atualiza o ruleset (PUT), sem criar outro" \
   test "$(count '^API PUT repos/acme/proj/rulesets/51$'):$(count '^API POST repos/acme/proj/rulesets$'):$(jq length "$GH_STATE/rulesets.json")" = "1:1:1"
 rm -f scripts/board.conf
@@ -338,14 +360,40 @@ check "--auto sem board.conf sai sem erro" ./scripts/sync-board.sh --auto
 check "sem --auto e sem board.conf falha" bash -c '! ./scripts/sync-board.sh'
 printf 'OWNER=acme\nPROJECT_NUMBER=7\n' > scripts/board.conf
 cat > "$R" <<'MD'
-## M0 Fundação
+---
+updated: 2026-01-01
+---
+
+# Roadmap
+
+## Milestones
+
+### M0 — Fundação e spike
+- **Escopo:** F1 | F2, riscos #3 e #4
+- **Critério de saída:** go/no-go
+| 9 | #99 | prosa com cara de linha | todo | | |
+
+| Ordem | Issue | Título | Status | Spec | PR |
+|---|---|---|---|---|---|
+| 8 | #98 | tabela fora da seção de issues | doing | | |
+
+### M1 — MVP
+- **Objetivo:** F3 | F4 (#5)
+
+## Issues por milestone
+
+### M0 — Fundação e spike
 
 | Ordem | Issue | Título | Status | Spec | PR |
 |---|---|---|---|---|---|
 | 1 | #10 | [chore] Setup | todo | — | |
 | 2 | #11 | [feat] Dois | doing | specs/a.md | |
 
-## M1 MVP
+| Risco | Nota |
+|---|---|
+| #97 | tabela sem o cabeçalho Ordem/Issue |
+
+### M1 — MVP
 
 | Ordem | Issue | Título | Status | Spec | PR |
 |---|---|---|---|---|---|
@@ -371,6 +419,8 @@ check "3. roadmap done sem PR (PR ainda não aberto) → doing" etapa 13 doing
 check "4. senão → todo" etapa 14 todo
 check "Ordem vem da coluna Ordem" grep -q 'id PVTI_16 --field-id F_ORDEM --number 7' "$GH_LOG"
 check "só adiciona ao board o que não está lá" test "$(count 'project item-add')" = 6
+check "ignora a seção Milestones e tabelas sem Ordem/Issue, mesmo com | e # (CA-G1)" \
+  bash -c '! grep -qE "PVTI_9[789]|issues/9[789]" "$0"' "$GH_LOG"
 check "sem label: nenhuma rota de labels" bash -c '! grep -q "labels" "$0"' "$GH_LOG"
 check "sem GITHUB_REPOSITORY, usa o remote; só rotas do repo" only_repo_routes
 : > "$GH_LOG"
@@ -406,7 +456,7 @@ check "/revisar delega ao subagente revisor" grep -q 'subagente `revisor`' .clau
 check "nada cita a label, o token nem o workflow de sync removidos (CA-D4)" \
   bash -c '! grep -rnE "$0" --exclude-dir=.git .' "status"":doing|PROJECT""_TOKEN|sync-board""\.yml"
 check "roadmap só com todo, doing e done (CA-D4)" \
-  bash -c 'grep -q "^Status: \`todo\` · \`doing\` · \`done\`" docs/roadmap.md && ! grep -qE "\| (review) \|" docs/roadmap.md'
+  bash -c 'grep -q "^Status das issues: \`todo\` · \`doing\` · \`done\`" docs/roadmap.md && ! grep -qE "\| (review) \|" docs/roadmap.md'
 check "AGENTS.md é link simbólico para o CLAUDE.md (CA-D6)" test "$(readlink AGENTS.md)" = CLAUDE.md
 P=docs/preparo.md
 check "preparo.md: frontmatter updated e fase (CA-E1)" \
@@ -430,11 +480,38 @@ check "/preparar traz o mapa material → destino e as regras de importação" \
 check "skill de importação removida, ninguém cita (CA-E3)" \
   bash -c 'test ! -e .claude/skills/importar"-docs" && ! grep -rqn "importar""-docs" --exclude-dir=.git .'
 check "\"importe meus docs\" leva ao /preparar" grep -q '`/preparar \[pasta\]` | "importe meus docs"' CLAUDE.md
-check "mesmo fluxo /preparar → /planejar → ciclo (CA-E5)" \
-  bash -c 'for f in CLAUDE.md README.md .claude/commands/preparar.md; do grep -q "/preparar\` (até nada travar) → \`/planejar\` → ciclo" "$f" || grep -q "/preparar (até nada travar) → /planejar → ciclo" "$f" || { echo "$f"; exit 1; }; done; grep -q "/planejar M1" docs/prompts/setup-a-partir-de-docs.md && grep -q "fase: pronto" docs/prompts/setup-a-partir-de-docs.md'
+FLOW='`/preparar` → merge → `/planejar` (visão geral) → merge → `/planejar M0`'
+check "mesmo fluxo /preparar → /planejar → /planejar M0 → ciclo em todos os docs (CA-E5, CA-G8)" \
+  bash -c 'for f in CLAUDE.md README.md docs/README.md .claude/commands/preparar.md docs/prompts/setup-a-partir-de-docs.md; do grep -qF "$0" "$f" || { echo "$f"; exit 1; }; done; grep -q "fase: pronto" docs/prompts/setup-a-partir-de-docs.md' "$FLOW"
+check "fluxo completo: /fechar com go/no-go e /planejar M1 depois (CA-G8)" \
+  bash -c 'for f in CLAUDE.md README.md docs/README.md .claude/commands/preparar.md docs/prompts/setup-a-partir-de-docs.md; do tr "\n" " " < "$f" | grep -qF "\`/fechar\` (go/no-go) → \`/planejar M1\`" || { echo "$f"; exit 1; }; done'
 check "/preparar primeiro na tabela de comandos do CLAUDE.md e do README" \
   bash -c 'for f in CLAUDE.md README.md; do grep -m1 -E "^\| .*\`/[a-z-]+" "$f" | grep -q "/preparar" || exit 1; done'
-check "/planejar manda rodar /preparar antes" grep -q "sugira \`/preparar\`" .claude/commands/planejar.md
+check "/planejar exige o preparo pronto" grep -q "\`docs/preparo.md\` com \`fase: pronto\`" .claude/commands/planejar.md
+RM=docs/roadmap.md
+check "roadmap: duas seções, Milestones e Issues por milestone, com o M0 (CA-G1)" \
+  bash -c 'grep -qx "## Milestones" "$0" && grep -qx "## Issues por milestone" "$0" && test "$(grep -cx "### M0 — Fundação e spike" "$0")" = 2 && grep -q "^updated: " "$0"' "$RM"
+check "roadmap: campos do milestone (objetivo, escopo, critério de saída, depende de, tamanho)" \
+  bash -c 'for c in Objetivo Escopo "Critério de saída" "Depende de / decisões abertas" Tamanho; do grep -q "^- \*\*$c:\*\*" "$0" || exit 1; done' "$RM"
+check "prd.md sem tabela de milestones, apontando para o roadmap (CA-G2)" \
+  bash -c '! grep -q "^| Milestone |" docs/prd.md && grep -q "Milestones e ordem de entrega: ver \[docs/roadmap.md\]" docs/prd.md'
+check "ninguém manda pôr milestone no prd.md nem no bootstrap.sh (CA-G2)" \
+  bash -c '! grep -rn "$0" --exclude-dir=.git .' "tabela do ""prd\|lista do .*boot""strap"
+PL=.claude/commands/planejar.md
+check "/planejar com os dois modos (CA-G3)" \
+  bash -c 'grep -q "^### Modo 1: \`/planejar\` → visão geral" "$0" && grep -q "^### Modo 2: \`/planejar M<n>\` → um milestone" "$0"' "$PL"
+check "/planejar: o modo 1 não cria issue, milestone nem spec" grep -q "No Modo 1: criar issue, milestone no GitHub ou spec" "$PL"
+check "/planejar: o modo 2 recusa milestone cujo anterior não encerrou" grep -q "só planejo o milestone que for o próximo" "$PL"
+check "/planejar: os dois modos param antes de criar" test "$(grep -c "\*\*pare\*\* até o \"pode seguir\"" "$PL")" = 2
+check "/planejar: issues com new-issue.sh, milestone com new-milestone.sh, termina com o sync (CA-G6)" \
+  bash -c 'grep -q "./scripts/new-issue.sh --title" "$0" && grep -q "./scripts/new-milestone.sh \"M<n> — <nome>\"" "$0" && grep -q "./scripts/sync-board.sh --auto" "$0" && grep -q "Mexer no board à mão" "$0"' "$PL"
+check "template do doc de milestone (CA-G4)" \
+  bash -c 'f=docs/milestones/_template.md; for k in "milestone: M<n> — <nome>" "status: planejado" "updated: "; do grep -q "^$k" "$f" || exit 1; done; for h in "Escopo final" "Fora de escopo" "Questões em aberto" "Critérios de aceite por feature" "Critério de saída testável" "Riscos" "Ordem sugerida"; do grep -qx "## $h" "$f" || exit 1; done'
+check "Como verificar no molde e no form de issue de feature" \
+  bash -c 'grep -qx "## Como verificar" docs/prompts/issue-feature.md && grep -q "label: Como verificar" .github/ISSUE_TEMPLATE/feature.yml'
+check "/fechar: critério de saída, fecha o milestone e go/no-go do M0 em ADR (CA-G7)" \
+  bash -c 'f=.claude/commands/fechar.md; grep -q "critério de saída" "$f" && grep -q "milestones/<n> -f state=closed" "$f" && grep -q "go/no-go" "$f" && grep -q "ADR \`Aceita\`" "$f" && grep -q "status: encerrado" "$f"'
+check "CLAUDE.md lista o new-milestone.sh" grep -q '| Criar um milestone (etapa 2) | `./scripts/new-milestone.sh "M<n> — <nome>"` |' CLAUDE.md
 check "comandos e CLAUDE.md citam merge.sh travado no head" \
   bash -c 'grep -q "merge.sh <pr> <head>" CLAUDE.md && grep -q "merge.sh <pr> <head>" .claude/commands/abrir-pr.md && grep -q "merge.sh <pr> <head>" .claude/commands/corrigir.md'
 # Padrão montado em partes para este arquivo não casar com ele mesmo.

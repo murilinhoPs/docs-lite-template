@@ -67,7 +67,7 @@ IN_REVIEW="$(gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" \
 has() { grep -qx "$1" <<<"$2"; }
 
 synced=0
-# Linhas: | Ordem | Issue | Título | Status | Spec | PR |
+# Linhas de issue (só as tabelas de "## Issues por milestone"): | Ordem | Issue | Título | Status | Spec | PR |
 while IFS='|' read -r _ ordem issue _title status _rest; do
   issue="$(tr -d ' \t#' <<<"$issue")"
   [[ "$issue" =~ ^[0-9]+$ ]] || continue   # cabeçalho, separador ou texto
@@ -104,6 +104,6 @@ while IFS='|' read -r _ ordem issue _title status _rest; do
 
   echo "  #$issue  $status  (ordem $ordem)"
   synced=$((synced + 1))
-done < "$ROADMAP"
+done < <(roadmap_rows "$ROADMAP")
 
 echo "Board sincronizado: $synced issue(s)."

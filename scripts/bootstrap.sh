@@ -2,7 +2,7 @@
 # Roda UMA vez em cada projeto novo criado a partir do template, LOCALMENTE,
 # com o gh do usuário logado. Não funciona nas sessões do Claude Code na nuvem
 # (usa GraphQL: gh repo view, gh label, gh project).
-# Cria o que o "Use this template" não copia: milestones, labels, a issue de
+# Cria o que o "Use this template" não copia: o milestone M0, labels, a issue de
 # setup (com a linha no roadmap), board no Projects, branch pr-assets e
 # configurações de merge/proteção.
 # Pode ser rodado de novo: pula o que já existe.
@@ -14,15 +14,9 @@ set -euo pipefail
 REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 echo "Configurando $REPO"
 
-# 1. Milestones (os mesmos títulos do docs/roadmap.md)
-for m in "M0 Fundação" "M1 MVP"; do
-  if gh api "repos/$REPO/milestones?state=all" -q '.[].title' | grep -qx "$m"; then
-    echo "  milestone já existe: $m"
-  else
-    gh api "repos/$REPO/milestones" -f title="$m" >/dev/null
-    echo "  milestone criado: $m"
-  fi
-done
+# 1. Só o milestone M0 (os outros nascem um por vez no /planejar M<n>)
+M0="M0 — Fundação e spike"
+echo "  milestone #$(./scripts/new-milestone.sh "$M0"): $M0"
 
 # 2. Labels (prefixo fixo, uma cor por grupo). Remove as labels padrão do GitHub.
 for l in bug documentation duplicate enhancement "good first issue" "help wanted" invalid question wontfix; do
@@ -67,7 +61,7 @@ SETUP_N="$(gh api --paginate "repos/$REPO/issues?state=all&per_page=100" \
   -q ".[] | select(.pull_request == null and .title == \"$SETUP_TITLE\") | .number" | head -n1)"
 if [ -z "$SETUP_N" ]; then
   SETUP_N="$(./scripts/new-issue.sh --title "$SETUP_TITLE" --body-file docs/prompts/issue-setup.md \
-    --milestone "M0 Fundação" --labels type:chore)"
+    --milestone "$M0" --labels type:chore)"
   echo "  issue de setup criada: #$SETUP_N (faça commit do docs/roadmap.md)"
 else
   ./scripts/new-issue.sh --existing "$SETUP_N" >/dev/null
@@ -191,4 +185,4 @@ fi
 [ -f "$CONF" ] && ./scripts/sync-board.sh || true
 
 echo "Pronto. Faça commit de scripts/board.conf e docs/roadmap.md numa branch e abra um PR (a main é protegida)."
-echo "Depois: rodar /preparar no Claude Code (docs + entrevista) e, com o PR de preparo mergeado, /planejar M1."
+echo "Depois, no Claude Code: /preparar → merge → /planejar (visão geral) → merge → /planejar M0."

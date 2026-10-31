@@ -10,7 +10,8 @@
 | Comportamento atual de cada feature | `docs/specs/<feature>.md` | Como funciona **hoje** |
 | Decisões | `docs/adr/` | Por que foi feito assim |
 | Trabalho a fazer | **Issues do GitHub** | O que falta mudar |
-| Ordem de execução e status | `docs/roadmap.md` | O que vem agora |
+| Milestones (visão geral) e ordem e status das issues | `docs/roadmap.md` | O que vem agora |
+| Plano do milestone em andamento | `docs/milestones/m<n>.md` | O que entra neste milestone |
 | Visualização | Board do Projects | Espelho do roadmap + andamento no GitHub |
 
 - **A spec descreve o presente; a issue descreve a mudança.** Um PR que muda comportamento
@@ -31,12 +32,13 @@
 
 ## Comandos
 
-Fluxo: `/preparar` (até nada travar) → `/planejar` → ciclo das tasks.
+Fluxo: `/preparar` → merge → `/planejar` (visão geral) → merge → `/planejar M0` → merge → ciclo das tasks do M0 → `/fechar` (go/no-go) → `/planejar M1` → ciclo → `/fechar` → `/planejar M2` ….
 
 | Comando | Papel | Para quando |
 |---|---|---|
 | `/preparar [pasta]` | Analista de docs | `docs/preparo.md` em `fase: pronto` e PR de docs aberto |
-| `/planejar <milestone>` | PM + docs | PR de planejamento aberto (specs + issues + roadmap) |
+| `/planejar` | PM | Visão geral dos milestones no roadmap; PR `[docs] Roadmap: visão geral` aberto |
+| `/planejar M<n>` | PM + docs | Só o próximo milestone: doc, specs, milestone e issues; PR `[docs] Planejar M<n>` aberto |
 | `/implementar [issue]` | Dev | Commits locais feitos, antes do push |
 | `/qa [issue]` | Tester | Prints na `pr-assets` e relatório entregue |
 | `/abrir-pr [issue]` | Dev | PR aberto ou atualizado, com o head no corpo |
@@ -48,14 +50,17 @@ Fluxo: `/preparar` (até nada travar) → `/planejar` → ciclo das tasks.
 
 0. `/preparar` (uma vez por projeto) → inventaria o material de `_import/`, organiza em `docs/` e
    entrevista você até nada travar o planejamento; abre o PR `[docs] Preparo do projeto`.
-1. `/planejar M1` → propõe issues, ACs e specs; depois do seu ok, abre o PR de planejamento. Você faz o merge.
+1. `/planejar` (uma vez) → visão geral: todos os milestones no roadmap, sem issues; depois `/planejar M<n>`
+   para o próximo milestone → doc do milestone, ACs nas specs e issues; você faz o merge de cada PR.
 2. `/implementar` → pega a primeira issue `todo`, cria `task/<N>-<slug>`, marca `doing` e faz commits locais.
 3. Você testa contra os ACs (o `/implementar` diz como).
 4. `/qa` (opcional) → o Claude testa como tester e salva prints em `pr-assets/issue-<N>/<sha7>/`.
 5. `/abrir-pr` → marca `done`, dá push e abre o PR com o head no corpo e o comando de merge pronto.
 6. `/revisar` → o subagente `revisor` posta um review (`COMMENT`) com bloqueantes, deveria e nits.
 7. `/corrigir` → corrige só o apontado, atualiza o PR e diz se você precisa testar de novo.
-8. Você faz o merge (`./scripts/merge.sh <pr> <head>`) e roda `/fechar` (board, nits e milestone).
+8. Você faz o merge (`./scripts/merge.sh <pr> <head>`) e roda `/fechar` (board e nits). Na última
+   issue do milestone, o `/fechar` confere o critério de saída, fecha o milestone e, no M0, registra
+   o go/no-go num ADR; aí vem o `/planejar M<n+1>`.
 
 ---
 
@@ -69,12 +74,13 @@ gh auth refresh -s project
 ```
 
 Depois do bootstrap, rode `/preparar` no Claude Code (veja "Preparando o projeto") e, com o PR de
-preparo mergeado, `/planejar M1`.
+preparo mergeado, `/planejar` (visão geral) e `/planejar M0`.
 
 O `bootstrap.sh` roda **só localmente**, com o `gh` do usuário logado: ele usa GraphQL
 (`gh project`, `gh label`, `gh repo edit`), que as sessões do Claude Code na nuvem não têm.
 
-Ele cria o que o template não copia: milestones, labels (`type:*`, `prio:*` e as `area:*` da
+Ele cria o que o template não copia: o milestone `M0 — Fundação e spike` (os outros nascem no
+`/planejar M<n>`), labels (`type:*`, `prio:*` e as `area:*` da
 tabela Features do `prd.md`), board no Projects (cópia do projeto modelo, com os campos Etapa e
 Ordem e as visões; número salvo em `scripts/board.conf`), a issue `[chore] Setup do projeto` com a
 linha dela no roadmap, branch `pr-assets`, worktree de prints, squash com título e corpo do PR e o
@@ -171,7 +177,7 @@ A aprovação (`/abrir-pr`) vale para um head específico. O ruleset da `main`, 
 - [ ] Rodar `/preparar` (com o material que você já tem em `_import/`, se houver) até o
       `docs/preparo.md` chegar em `fase: pronto`, e fazer o merge do PR de preparo
 - [ ] Rodar `./scripts/bootstrap.sh` de novo para criar as labels `area:*` da tabela Features
-- [ ] Planejar o primeiro milestone com `/planejar M1`
+- [ ] Planejar: `/planejar` (visão geral dos milestones) e, depois do merge, `/planejar M0`
 - [ ] Ajustar `docs/qa/print-rules.md` para a plataforma
 - [ ] Apagar `scripts/publish-template.sh` (só serve para o template)
 
@@ -199,7 +205,7 @@ saber o que separar.
    Ao fim de cada rodada ele faz commit e pergunta se continua; parar é seguro, o próximo
    `/preparar` retoma pelo `preparo.md`.
 5. **Pronto:** com os itens que travam resolvidos, ele abre o PR `[docs] Preparo do projeto`.
-   Depois do merge, rode `/planejar M1`.
+   Depois do merge, rode `/planejar` (visão geral) e, com ele mergeado, `/planejar M0`.
 
 Ele não inventa conteúdo e não cria issues (isso é do `/planejar`). O mapa "material → destino"
 e as regras de importação estão em [`.claude/commands/preparar.md`](.claude/commands/preparar.md).

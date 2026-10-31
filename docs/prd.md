@@ -38,9 +38,4 @@ tabela e o ID fica vago). A coluna Área vira a label `area:*` (criada pelo `boo
 
 ## Milestones
 
-A ordem do trabalho (issues) fica em [roadmap.md](roadmap.md).
-
-| Milestone | Objetivo |
-|---|---|
-| M0 Fundação | Projeto rodando, decisões técnicas iniciais |
-| M1 MVP | |
+Milestones e ordem de entrega: ver [docs/roadmap.md](roadmap.md).

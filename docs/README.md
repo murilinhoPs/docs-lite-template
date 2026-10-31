@@ -6,7 +6,8 @@
 | Comportamento atual de cada feature | [specs/](specs/) `<feature>.md` | Como funciona **hoje** |
 | Decisões | [adr/](adr/README.md) | Por que foi feito assim |
 | Trabalho a fazer | **Issues do GitHub** | O que falta mudar |
-| Ordem de execução e status | [roadmap.md](roadmap.md) | O que vem agora |
+| Milestones (visão geral) e ordem e status das issues | [roadmap.md](roadmap.md) | O que vem agora |
+| Plano do milestone em andamento | [milestones/](milestones/) `m<n>.md` | O que entra neste milestone |
 | Visualização | Board do Projects | Espelho do roadmap |
 
 A spec descreve o presente, nunca planos. A issue descreve a mudança. Um PR que muda
@@ -20,7 +21,8 @@ comportamento atualiza a spec no mesmo PR.
 | [overview.md](overview.md) | Resumo do projeto, stack e arquitetura |
 | [prd.md](prd.md) | Visão, escopo, MoSCoW e a tabela de Features (`F1`, `F2`…) |
 | [specs/](specs/) | Uma spec viva por feature, com os AC vigentes (`AC-F<n>-NN`) |
-| [roadmap.md](roadmap.md) | Milestones e a ordem das issues, com status |
+| [roadmap.md](roadmap.md) | Milestones (visão geral, em prosa) e as issues por milestone, com ordem e status |
+| [milestones/](milestones/) | Um doc por milestone já detalhado (`m<n>.md`): escopo, ACs referenciados, critério de saída, riscos, ordem; vira histórico quando encerra |
 | [adr/](adr/README.md) | Decisões técnicas, numeradas (`0001-...`), com índice |
 | [design/](design/) | Design system e tokens |
 | [qa/print-rules.md](qa/print-rules.md) | Como e o que printar quando o Claude testa |
@@ -30,6 +32,9 @@ comportamento atualiza a spec no mesmo PR.
 ## Regras
 
 - A ordem das linhas em `roadmap.md` é a ordem de execução. Cada linha é uma issue.
+- Planejamento em duas etapas: `/planejar` escreve a visão geral dos milestones; `/planejar M<n>`
+  detalha só o próximo. Nunca existem issues (nem milestone no GitHub) de milestones futuros.
+- Fluxo: `/preparar` → merge → `/planejar` (visão geral) → merge → `/planejar M0` → merge → ciclo das tasks do M0 → `/fechar` (go/no-go) → `/planejar M1` → ciclo → `/fechar` → `/planejar M2` ….
 - `roadmap.md` guarda o destino de cada issue (`todo`, `doing`, `done`). O board espelha o roadmap
   e o andamento no GitHub (issue fechada → `done`, PR aberto → `review`), pelo
   `./scripts/sync-board.sh`, que roda onde o board é acessível. Nunca mova cards à mão.

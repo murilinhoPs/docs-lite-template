@@ -6,7 +6,7 @@
 # --after. A coluna Spec vem do "**Spec:** docs/specs/<x>.md" do corpo.
 #
 # Uso:
-#   ./scripts/new-issue.sh --title "[feat] ..." --body-file corpo.md --milestone "M1 MVP" \
+#   ./scripts/new-issue.sh --title "[feat] ..." --body-file corpo.md --milestone "M1 — <nome>" \
 #     --labels "type:feature,area:x" [--after <issue>]
 #   ./scripts/new-issue.sh --existing <N> [--after <issue>]   # issue que já existe (ex.: bug)
 # Imprime: o número da issue.

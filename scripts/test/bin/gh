@@ -110,7 +110,13 @@ echo "$body" > "$S/last-body.json"
 save() { mv "$S/tmp" "$S/$1"; }
 
 case "$method $path" in
-  "GET milestones") cat "$S/milestones.json" | out ;;
+  "GET milestones")
+    state="$(param state)"
+    jq --arg s "${state:-open}" '[.[] | select($s == "all" or (.state // "open") == $s)]' "$S/milestones.json" | out ;;
+  "POST milestones")
+    jq --argjson b "$body" '. + [{number: ((map(.number) | max // 0) + 1), title: $b.title, state: "open"}]' \
+      "$S/milestones.json" > "$S/tmp" && save milestones.json
+    jq --arg t "$(jq -r .title <<<"$body")" '.[] | select(.title == $t)' "$S/milestones.json" | out ;;
   "GET issues")
     label="$(param labels)"
     state="$(param state)"

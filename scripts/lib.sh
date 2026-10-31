@@ -26,17 +26,35 @@ jq_str() {
   jq -Rn --arg s "$1" '$s'
 }
 
-# Filtro jq que casa o título de um milestone com "M1 MVP" ou só com o código "M1".
+# Filtro jq que casa o título de um milestone com "M1 — Nome" ou só com o código "M1".
 milestone_filter() {
   echo "select(.title == $(jq_str "$1") or (.title | startswith($(jq_str "$1 "))))"
 }
 
 # Linhas do roadmap: | Ordem | Issue | Título | Status | Spec | PR |
 # Com -F'|': $2 ordem, $3 issue (#N), $4 título, $5 status, $6 spec, $7 PR.
+# Só contam as tabelas da seção "## Issues por milestone" com o cabeçalho
+# "| Ordem | Issue |": a seção "## Milestones" é prosa e pode ter | e # à vontade.
+# track(linha) tem de ser chamada em todas as linhas, em ordem (guarda o estado).
+ROADMAP_AWK='
+  function is_row(l) { return l ~ /^\|[^|]*\|[ \t]*#[0-9]+[ \t]*\|/ }
+  function issue_of(l,  f) { split(l, f, "|"); gsub(/[ \t]/, "", f[3]); return f[3] }
+  function track(l) {
+    if (l ~ /^## /) { iss = (l ~ /^## Issues por milestone[ \t]*$/); tbl = 0 }
+    if (l !~ /^\|/) tbl = 0
+    else if (iss && l ~ /^\|[ \t]*Ordem[ \t]*\|[ \t]*Issue[ \t]*\|/) tbl = 1
+    return iss && tbl && is_row(l)
+  }
+'
+
+# Linhas de issue do roadmap, na ordem. roadmap_rows <arquivo>
+roadmap_rows() {
+  awk "$ROADMAP_AWK"' track($0) { print }' "$1"
+}
 
 # Sai com 0 se a issue tem linha no roadmap. roadmap_has <arquivo> <N>
 roadmap_has() {
-  awk -F'|' -v n="#$2" '{ i = $3; gsub(/[ \t]/, "", i) } i == n { found = 1 } END { exit !found }' "$1"
+  awk -v n="#$2" "$ROADMAP_AWK"' track($0) && issue_of($0) == n { found = 1 } END { exit !found }' "$1"
 }
 
 # Troca uma coluna da linha da issue. roadmap_set <arquivo> <N> <status|pr> <valor>
@@ -48,9 +66,9 @@ roadmap_set() {
     *) echo "Coluna desconhecida: $3" >&2; return 1 ;;
   esac
   tmp="$(mktemp)"
-  awk -F'|' -v OFS='|' -v n="#$2" -v col="$col" -v val="$4" '
-    { i = $3; gsub(/[ \t]/, "", i) }
-    i == n && NF >= 8 { $col = " " val " "; found = 1 }
+  awk -F'|' -v OFS='|' -v n="#$2" -v col="$col" -v val="$4" "$ROADMAP_AWK"'
+    { r = track($0) }
+    r && issue_of($0) == n && NF >= 8 { $col = " " val " "; found = 1 }
     { print }
     END { if (!found) exit 2 }' "$1" > "$tmp" || { rm -f "$tmp"; echo "Issue #$2 não está em $1." >&2; return 1; }
   cat "$tmp" > "$1"
@@ -66,51 +84,54 @@ roadmap_get() {
     spec) col=6 ;;
     pr) col=7 ;;
   esac
-  awk -F'|' -v n="#$2" -v col="$col" '
-    { i = $3; gsub(/[ \t]/, "", i) }
-    i == n { v = $col; gsub(/^[ \t]+|[ \t]+$/, "", v); print v; exit }' "$1"
+  awk -F'|' -v n="#$2" -v col="$col" "$ROADMAP_AWK"'
+    track($0) && issue_of($0) == n { v = $col; gsub(/^[ \t]+|[ \t]+$/, "", v); print v; exit }' "$1"
 }
 
-# Insere a linha de uma issue e renumera a coluna Ordem.
+# Insere a linha de uma issue e renumera a coluna Ordem (global).
 # roadmap_insert <arquivo> <N> <título> <spec> <milestone> [<depois da issue>]
-# Sem "depois", entra no fim da seção "## <milestone>" (criada no fim do arquivo se faltar).
+# Sem "depois", entra no fim da tabela de "### <milestone>" em "## Issues por milestone"
+# (a subseção, e a seção, são criadas se faltarem).
 roadmap_insert() {
   local tmp title
   title="${3//|//}"
   tmp="$(mktemp)"
-  awk -v row="| | #$2 | $title | todo | $4 | |" -v ms="$5" -v after="${6:+#$6}" '
-    function issue_of(l,  f) { split(l, f, "|"); gsub(/[ \t]/, "", f[3]); return f[3] }
-    function is_row(l) { return l ~ /^\|[^|]*\|[ \t]*#[0-9]+[ \t]*\|/ }
-    { line[NR] = $0 }
+  awk -v row="| | #$2 | $title | todo | $4 | |" -v ms="$5" -v after="${6:+#$6}" "$ROADMAP_AWK"'
+    { line[NR] = $0; isrow[NR] = track($0); if ($0 ~ /^## Issues por milestone[ \t]*$/) iss_h = NR }
     END {
-      at = 0
+      hdr = "| Ordem | Issue | Título | Status | Spec | PR |\n|---|---|---|---|---|---|"
+      n = NR; at = 0; pre = ""
       if (after != "") {
-        for (i = 1; i <= NR; i++) if (is_row(line[i]) && issue_of(line[i]) == after) at = i
+        for (i = 1; i <= n; i++) if (isrow[i] && issue_of(line[i]) == after) at = i
         if (!at) { print "Issue " after " não está no roadmap." > "/dev/stderr"; exit 2 }
       } else {
+        if (!iss_h) { line[++n] = ""; line[++n] = "## Issues por milestone"; iss_h = n }
+        end_iss = n
+        for (i = iss_h + 1; i <= n; i++) if (line[i] ~ /^## /) { end_iss = i - 1; break }
         h = 0
-        for (i = 1; i <= NR; i++) {
+        for (i = iss_h + 1; i <= end_iss; i++) {
           t = line[i]
-          if (sub(/^## /, "", t) && (t == ms || index(t, ms " ") == 1)) { h = i; break }
+          if (sub(/^### /, "", t) && (t == ms || index(t, ms " ") == 1)) { h = i; break }
         }
-        if (h) for (i = h + 1; i <= NR && line[i] !~ /^## /; i++) if (line[i] ~ /^\|/) at = i
-      }
-      n = NR
-      if (!at) {
-        # Seção nova no fim do arquivo.
-        if (line[n] != "") line[++n] = ""
-        line[++n] = "## " ms
-        line[++n] = ""
-        line[++n] = "| Ordem | Issue | Título | Status | Spec | PR |"
-        line[++n] = "|---|---|---|---|---|---|"
-        at = n
+        if (h) {
+          sec_end = end_iss
+          for (i = h + 1; i <= end_iss; i++) if (line[i] ~ /^##/) { sec_end = i - 1; break }
+          for (i = h + 1; i <= sec_end; i++) if (line[i] ~ /^\|/) at = i
+          if (!at) { at = h; pre = "\n" hdr }
+        } else {
+          at = end_iss
+          pre = (line[at] == "" ? "" : "\n") "### " ms "\n\n" hdr
+        }
       }
       k = 0
       for (i = 1; i <= n; i++) {
         out = line[i]
-        if (is_row(out)) { sub(/^\|[^|]*\|/, "| " ++k " |", out) }
+        if (isrow[i]) sub(/^\|[^|]*\|/, "| " ++k " |", out)
         print out
-        if (i == at) { r = row; sub(/^\| \|/, "| " ++k " |", r); print r }
+        if (i == at) {
+          if (pre != "") print pre
+          r = row; sub(/^\| \|/, "| " ++k " |", r); print r
+        }
       }
     }' "$1" > "$tmp" || { rm -f "$tmp"; return 1; }
   cat "$tmp" > "$1"

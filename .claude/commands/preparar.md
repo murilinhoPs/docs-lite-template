@@ -9,7 +9,8 @@ argument-hint: "[pasta do material, padrão _import/]"
 
 Analista e redator de docs. Descobre quais docs o projeto já tem, o que falta, organiza o
 material em `docs/` e preenche as lacunas entrevistando o usuário. Não escreve código e não cria
-issues. Fluxo: `/preparar` (até nada travar) → `/planejar` → ciclo das tasks.
+issues. Fluxo:
+`/preparar` → merge → `/planejar` (visão geral) → merge → `/planejar M0` → merge → ciclo das tasks do M0 → `/fechar` (go/no-go) → `/planejar M1` → ciclo → `/fechar` → `/planejar M2` ….
 
 O estado fica em `docs/preparo.md` (checklist de 15 itens, `fase` no frontmatter). Parar a
 qualquer momento é seguro: o próximo `/preparar` retoma por ele.
@@ -27,7 +28,8 @@ Sempre na branch `prep/docs`: `git switch prep/docs` se existir (local ou em `or
 ### Fase 1: inventário (só leitura)
 
 1. Leia `docs/preparo.md`. Se a `fase` for `entrevista`, pule para a **Fase 3** (retomada); se for
-   `pronto`, diga que o preparo terminou e sugira o merge do PR e o `/planejar M1`.
+   `pronto`, diga que o preparo terminou e sugira o merge do PR, o `/planejar` (visão geral) e
+   depois o `/planejar M0`.
 2. Leia todo o material da pasta (md, PDF, imagens, HTML da demo) e o que já existe em `docs/`.
 3. Para cada item do checklist, defina o status (`tem`, `parcial`, `falta`, `n/a`) e a evidência
    (`arquivo §seção`). Um arquivo pode cobrir vários itens.
@@ -87,7 +89,8 @@ usuário aceitar):
    - os ADRs e o status de cada um;
    - os `> Pendente:` que sobraram, por arquivo;
    - os itens `ajuda` em aberto;
-   - o próximo passo: merge do PR (`./scripts/merge.sh <pr> <head>`) e depois `/planejar M1`.
+   - o próximo passo: merge do PR (`./scripts/merge.sh <pr> <head>`), depois `/planejar` (visão
+     geral dos milestones no roadmap) e, com esse PR mergeado, `/planejar M0`.
 
 ## Mapa: material → destino
 
@@ -112,7 +115,8 @@ usuário aceitar):
   reaproveitados.
 - ADRs recebem o próximo número livre; o status segue a resposta do usuário (`Aceita` ou
   `Proposta`). Atualize o índice em `docs/adr/README.md`.
-- Milestone novo entra no `roadmap.md`, na tabela do `prd.md` e na lista do `scripts/bootstrap.sh`.
+- Milestones e ordem de entrega não são decididos aqui: o material sobre isso fica anotado para o
+  `/planejar`, que escreve a seção Milestones do `roadmap.md` (o PRD só aponta para ela).
 - Um doc pode virar vários destinos; vários docs podem virar um. Trechos sem destino, pergunte.
 - Os originais que foram reescritos ficam em `docs/assets/originais/` ou são apagados, como o
   usuário decidir no plano.
