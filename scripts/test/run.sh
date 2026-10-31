@@ -509,8 +509,10 @@ check "template do doc de milestone (CA-G4)" \
   bash -c 'f=docs/milestones/_template.md; for k in "milestone: M<n> — <nome>" "status: planejado" "updated: "; do grep -q "^$k" "$f" || exit 1; done; for h in "Escopo final" "Fora de escopo" "Questões em aberto" "Critérios de aceite por feature" "Critério de saída testável" "Riscos" "Ordem sugerida"; do grep -qx "## $h" "$f" || exit 1; done'
 check "Como verificar no molde e no form de issue de feature" \
   bash -c 'grep -qx "## Como verificar" docs/prompts/issue-feature.md && grep -q "label: Como verificar" .github/ISSUE_TEMPLATE/feature.yml'
-check "/fechar: critério de saída, fecha o milestone e go/no-go do M0 em ADR (CA-G7)" \
-  bash -c 'f=.claude/commands/fechar.md; grep -q "critério de saída" "$f" && grep -q "milestones/<n> -f state=closed" "$f" && grep -q "go/no-go" "$f" && grep -q "ADR \`Aceita\`" "$f" && grep -q "status: encerrado" "$f"'
+check "/fechar: critério de saída, fecha o milestone e guarda o encerramento e o go/no-go nele (CA-G7)" \
+  bash -c 'f=.claude/commands/fechar.md; grep -q "critério de saída" "$f" && grep -q "milestones/<n> -f state=closed -F description=@" "$f" && grep -q "go/no-go: go | no-go" "$f" && ! grep -q "Encerrar M" "$f"'
+check "/planejar M<n+1> registra o encerramento no PR dele: doc encerrado e ADR do go/no-go" \
+  bash -c 'f=.claude/commands/planejar.md; grep -q "Critério de saída: confirmado" "$f" && grep -q "go/no-go: go" "$f" && grep -q "status: encerrado" "$f" && grep -q "ADR \`Aceita\`" "$f"'
 check "CLAUDE.md lista o new-milestone.sh" grep -q '| Criar um milestone (etapa 2) | `./scripts/new-milestone.sh "M<n> — <nome>"` |' CLAUDE.md
 check "comandos e CLAUDE.md citam merge.sh travado no head" \
   bash -c 'grep -q "merge.sh <pr> <head>" CLAUDE.md && grep -q "merge.sh <pr> <head>" .claude/commands/abrir-pr.md && grep -q "merge.sh <pr> <head>" .claude/commands/corrigir.md'

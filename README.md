@@ -59,8 +59,9 @@ Fluxo: `/preparar` → merge → `/planejar` (visão geral) → merge → `/plan
 6. `/revisar` → o subagente `revisor` posta um review (`COMMENT`) com bloqueantes, deveria e nits.
 7. `/corrigir` → corrige só o apontado, atualiza o PR e diz se você precisa testar de novo.
 8. Você faz o merge (`./scripts/merge.sh <pr> <head>`) e roda `/fechar` (board e nits). Na última
-   issue do milestone, o `/fechar` confere o critério de saída, fecha o milestone e, no M0, registra
-   o go/no-go num ADR; aí vem o `/planejar M<n+1>`.
+   issue do milestone, o `/fechar` confere o critério de saída, fecha o milestone e, no M0, pergunta
+   o go/no-go; aí vem o `/planejar M<n+1>`, cujo PR registra o encerramento (doc `encerrado` e, no
+   M0, o ADR do go/no-go).
 
 ---
 

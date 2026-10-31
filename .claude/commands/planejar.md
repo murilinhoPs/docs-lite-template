@@ -49,10 +49,11 @@ assim) e a tabela Features do `docs/prd.md` preenchida.
 
 0. **Pré-condições.**
    - O milestone existe na seção Milestones do `docs/roadmap.md` (se não, sugira o Modo 1).
-   - O anterior está **encerrado**: todas as issues dele `done` e fechadas, o critério de saída
-     conferido no `/fechar` e o doc `docs/milestones/m<n-1>.md` com `status: encerrado`. Para o
-     M1, o go/no-go do M0 registrado em ADR (`Aceita`) como **go**. Para o M0, basta o roadmap
-     mergeado (a issue de setup já existe).
+   - O anterior está **encerrado** pelo `/fechar`: o milestone `M<n-1>` fechado no GitHub, com
+     `Critério de saída: confirmado` na descrição
+     (`gh api "repos/{owner}/{repo}/milestones?state=closed" -q '.[] | select(.title | startswith("M<n-1> ")) | .description'`).
+     Para o M1, a descrição do M0 também diz `go/no-go: go`. Para o M0, basta o roadmap mergeado
+     (a issue de setup já existe).
    - Se não, **pare**: "só planejo o milestone que for o próximo".
 1. Releia o `roadmap.md`, o PRD, as specs, os ADRs e **o que mudou desde o milestone anterior**:
    `git log` do milestone anterior, issues de follow-up `prio:baixa` sem linha no roadmap
@@ -66,16 +67,20 @@ assim) e a tabela Features do `docs/prd.md` preenchida.
    que entram neste milestone vão com `./scripts/new-issue.sh --existing <N>`.
 4. Mostre o doc e a lista de issues e **pare** até o "pode seguir". Nada é criado antes.
 5. Depois do ok, numa branch `plan/m<n>` a partir da `main` atualizada:
-   1. specs novas ou alteradas e `docs/milestones/m<n>.md` (`status: planejado`);
-   2. o milestone no GitHub: `./scripts/new-milestone.sh "M<n> — <nome>"` (idempotente; no M0 o
+   1. o encerramento do milestone anterior, a partir da descrição dele no GitHub: o doc
+      `docs/milestones/m<n-1>.md` com `status: encerrado` (vira histórico) e, no M1, o ADR `Aceita`
+      do go/no-go do M0 (`docs/adr/NNNN-go-no-go-m0.md`, com o motivo), com o índice de
+      `docs/adr/README.md` atualizado;
+   2. specs novas ou alteradas e `docs/milestones/m<n>.md` (`status: planejado`);
+   3. o milestone no GitHub: `./scripts/new-milestone.sh "M<n> — <nome>"` (idempotente; no M0 o
       `bootstrap.sh` já criou);
-   3. as issues, na ordem:
+   4. as issues, na ordem:
       `./scripts/new-issue.sh --title "[feat] ..." --body-file <corpo.md> --milestone "M<n> — <nome>" --labels "type:feature,area:<x>" [--after <N>]`
       (o script também escreve a linha `todo` no roadmap, em "Issues por milestone");
-   4. se o escopo mudou, atualize a seção Milestones do `roadmap.md` no mesmo PR;
-   5. commit (`docs: planejar M<n>`), push e PR só de docs `[docs] Planejar M<n>`, como no Modo 1
+   5. se o escopo mudou, atualize a seção Milestones do `roadmap.md` no mesmo PR;
+   6. commit (`docs: planejar M<n>`), push e PR só de docs `[docs] Planejar M<n>`, como no Modo 1
       (`gh api .../pulls` + `./scripts/open-pr.sh --update <pr>`);
-   6. `./scripts/sync-board.sh --auto` (sem board acessível, ele avisa e segue). Não adicione
+   7. `./scripts/sync-board.sh --auto` (sem board acessível, ele avisa e segue). Não adicione
       cards nem campos à mão.
 
 ## Onde parar

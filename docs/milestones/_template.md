@@ -8,7 +8,8 @@ updated: AAAA-MM-DD
 
 Escrito pelo `/planejar M<n>` quando este milestone é o próximo. É plano, não comportamento: os
 ACs vivem nas specs das features (`AC-F<n>-NN`) e aqui só são referenciados. Quando o milestone
-encerra (`/fechar`), o doc vira histórico (`status: encerrado`) e não é mais atualizado.
+encerra, o `/fechar` fecha o milestone no GitHub e o PR do próximo `/planejar M<n+1>` marca este
+doc como histórico (`status: encerrado`); depois disso ele não é mais atualizado.
 
 ## Escopo final
 
