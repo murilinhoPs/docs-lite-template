@@ -230,7 +230,8 @@ um checklist de 15 itens (8 que **travam** o planejamento e 7 que **ajudam**); a
 saber o que separar.
 
 1. Coloque o material na pasta `_import/` (já vem no template, vazia, só com um `.gitkeep`): PRD,
-   briefing, notas, PDFs, telas, demo em HTML. Depois rode `/preparar` (ou peça "importe meus docs"). Sem material, ele começa pelo que há em `docs/`.
+   briefing, notas, PDFs, telas, demo em HTML. Depois rode `/preparar` (ou peça "importe meus docs").
+   Sem nada em `_import/` (e com os docs ainda no template), o `/preparar` avisa e espera os arquivos; você pode mandá-los no chat, e ele os salva em `_import/`.
 2. **Inventário:** ele lê tudo e marca cada item do checklist como `tem`, `parcial`, `falta` ou
    `n/a`, com a evidência, e anota as contradições entre as fontes.
 3. **Plano:** mostra o checklist, o plano de organização dos arquivos (o que vai para onde) e a

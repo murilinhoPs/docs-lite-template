@@ -568,6 +568,20 @@ check "CLAUDE.md: Em outros agentes, logo depois de Fases → comandos, com a re
 check "docs/README: exemplo de ponta a ponta com os formatos reais" \
   bash -c 'f=docs/README.md; grep -q "^## Exemplo de ponta a ponta" "$f" && grep -qF "| F1 | Login com e-mail | Must |" "$f" && grep -q "AC-F1-02" "$f" && grep -q "\[feat\] Login com e-mail" "$f" && grep -qx "## Como verificar" "$f" && grep -qF "| 2 | #12 | [feat] Login com e-mail | todo | specs/login.md | |" "$f" && grep -qx "Closes #12" "$f" && grep -q "^\*\*Head:\*\*" "$f" && grep -q "0 bloqueantes, 1 deveria, 1 nit" "$f" && grep -q "prio:baixa" "$f"'
 
+echo "/preparar sem material (Parte K)"
+PP=.claude/commands/preparar.md
+f1() { sed -n "/^### Fase 1/,/^### Fase 2/p" "$PP"; }
+check "Fase 1 tem o passo Material vazio, com as três situações e as três opções (CA-K1)" \
+  bash -c 's="$(sed -n "/^### Fase 1/,/^### Fase 2/p" "$0")"; for k in "**Material vazio.**" "Pasta vazia e \`docs/\` sem conteúdo" "Pasta vazia, mas \`docs/\` já tem conteúdo" "aponta para uma pasta que não existe" "Vou adicionar os arquivos (Recomendado)" "Seguir sem material:" "Usar outra pasta:"; do grep -qF "$k" <<<"$s" || { echo "$k"; exit 1; }; done' "$PP"
+check "Vou adicionar para e salva no _import/ com os nomes originais; sem material registra e marca falta (CA-K2)" \
+  bash -c 's="$(sed -n "/^### Fase 1/,/^### Fase 2/p" "$0")"; grep -q "pare e espere" <<<"$s" && grep -q "com os nomes originais" <<<"$s" && grep -q "salvei N arquivos em" <<<"$s" && grep -q "como \`falta\`" <<<"$s" && grep -q "\`sem material\`" <<<"$s"' "$PP"
+check "a verificação só roda em fase inventario (CA-K3)" \
+  bash -c 'grep -q "Só quando a \`fase\` é \`inventario\`" "$0" && grep -q "na retomada, \`entrevista\`, e em" "$0"' "$PP"
+check "sessão não interativa: para e não gera relatório (CA-K4)" \
+  bash -c 'grep -q "sessão não interativa): pare com a mesma mensagem" "$0" && grep -q "Nunca avance para o relatório sem material" "$0"' "$PP"
+check "README, docs/README, prompt de setup e CLAUDE.md dizem que ele avisa e espera os arquivos (CA-K5)" \
+  bash -c 'for f in README.md docs/README.md docs/prompts/setup-a-partir-de-docs.md CLAUDE.md; do grep -q "avisa e espera os arquivos" "$f" || { echo "$f"; exit 1; }; done'
+
 echo "consistência (CA-H1, CA-H2)"
 cd "$SRC"
 check "todo ./scripts/X citado no CLAUDE.md, READMEs e comandos existe e é executável" \

@@ -5,7 +5,7 @@ organize tudo em `docs/`, preencha o que falta e planeje as primeiras issues.
 
 Antes: crie o projeto a partir do template, rode `./scripts/bootstrap.sh` localmente e coloque o
 material numa pasta `_import/` na raiz. Se quiser saber o que separar, abra `docs/preparo.md`
-(o checklist que a IA vai usar).
+(o checklist que a IA vai usar). Sem nada em `_import/` (e com os docs ainda no template), o `/preparar` avisa e espera os arquivos; você pode mandá-los no chat, e ele os salva em `_import/`.
 
 ## No Claude Code
 

@@ -17,6 +17,7 @@ comportamento atualiza a spec no mesmo PR.
 
 | Arquivo / pasta | O que guarda |
 |---|---|
+| [`../_import/`](../_import/) | Material a importar pelo `/preparar` (PRD, design, telas, demo, notas). Sem nada em `_import/` (e com os docs ainda no template), o `/preparar` avisa e espera os arquivos; você pode mandá-los no chat, e ele os salva em `_import/`. |
 | [preparo.md](preparo.md) | Checklist do preparo (o que o projeto precisa antes do `/planejar`), a seção "Para o /planejar" (o que o material diz sobre fases, ordem de entrega e trabalho a fazer) e o registro da entrevista |
 | [overview.md](overview.md) | Resumo do projeto, stack e arquitetura |
 | [prd.md](prd.md) | Visão, escopo, MoSCoW e a tabela de Features (`F1`, `F2`…) |

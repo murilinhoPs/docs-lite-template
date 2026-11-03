@@ -93,6 +93,19 @@ Rodar tudo: `./scripts/test/run.sh` (precisa de `bash`, `git`, `jq`, `yq` e `pyt
 | CA-J5 | "Em outros agentes" no `CLAUDE.md`; `AGENTS.md` arquivo normal; exemplo de ponta a ponta no `docs/README.md` | run: "CLAUDE.md: Em outros agentes … (CA-J5)", "AGENTS.md é arquivo normal …", "docs/README: exemplo de ponta a ponta com os formatos reais" |
 | CA-J6 | `CA.md`, tabela de scripts do `CLAUDE.md` e README atualizados; `run.sh` e `smoke.sh` passando | run: "todo script de scripts/ está na tabela do CLAUDE.md …" (cobre `next-task.sh` e `atualiza-template.sh`) e a suíte toda |
 
+## Parte K (`/preparar` sem material)
+
+Os comandos são prompts: estes CA conferem o texto do `preparar.md` (também automatizados no
+`run.sh`, seção "/preparar sem material (Parte K)").
+
+| CA | O que | Cobertura |
+|---|---|---|
+| CA-K1 | Passo "Material vazio" na Fase 1, com as três situações e as três opções | manual: `sed -n '/^### Fase 1/,/^### Fase 2/p' .claude/commands/preparar.md \| grep -nE "Material vazio\|Pasta vazia\|não existe\|Vou adicionar\|Seguir sem material\|Usar outra pasta"`; run: "Fase 1 tem o passo Material vazio … (CA-K1)" |
+| CA-K2 | "Vou adicionar" para e espera, salva no `_import/` com os nomes originais; "Seguir sem material" marca `falta` e registra `sem material` | manual: `grep -nE "pare e espere\|nomes originais\|sem material" .claude/commands/preparar.md`; run: "… (CA-K2)" |
+| CA-K3 | Só roda em `fase: inventario`; retomada e `pronto` não mudam | manual: `grep -n "Só quando a \`fase\` é \`inventario\`" .claude/commands/preparar.md`; run: "… (CA-K3)" |
+| CA-K4 | Sessão não interativa: para com a mensagem, sem relatório | manual: `grep -n "sessão não interativa" .claude/commands/preparar.md`; run: "… (CA-K4)" |
+| CA-K5 | README, `docs/README.md`, prompt de setup e `CA.md` atualizados; `run.sh` e `smoke.sh` passam | manual: `grep -ln "avisa e espera os arquivos" README.md docs/README.md docs/prompts/setup-a-partir-de-docs.md CLAUDE.md`; run: "… (CA-K5)" e a suíte toda |
+
 ## Parte H (fechamento)
 
 | CA | O que | Cobertura |

@@ -17,8 +17,9 @@ qualquer momento é seguro: o próximo `/preparar` retoma por ele.
 
 ## Argumentos
 
-`$ARGUMENTS` = a pasta do material a importar (opcional; padrão `_import/`). Pode estar vazia
-ou não existir: aí o inventário olha só o que já está em `docs/`.
+`$ARGUMENTS` = a pasta do material a importar (opcional; padrão `_import/`). Se ela estiver vazia
+ou não existir, o passo "Material vazio" da Fase 1 decide: com `docs/` já preenchido, o inventário
+olha só `docs/`; sem nada, o comando para e pergunta.
 
 ## Passos
 
@@ -30,11 +31,39 @@ Sempre na branch `prep/docs`: `git switch prep/docs` se existir (local ou em `or
 1. Leia `docs/preparo.md`. Se a `fase` for `entrevista`, pule para a **Fase 3** (retomada); se for
    `pronto`, diga que o preparo terminou e sugira o merge do PR, o `/planejar` (visão geral) e
    depois o `/planejar M0`.
-2. Leia todo o material da pasta (md, PDF, imagens, HTML da demo) e o que já existe em `docs/`.
-3. Para cada item do checklist, defina o status (`tem`, `parcial`, `falta`, `n/a`) e a evidência
+2. **Material vazio.** Só quando a `fase` é `inventario` (na retomada, `entrevista`, e em
+   `pronto` este passo não roda). A pasta (padrão `_import/`) está **vazia** se não existe ou só
+   tem `.gitkeep`, README e arquivos ocultos. O `docs/` está **sem conteúdo** se `prd.md`,
+   `overview.md` e `design/design-system.md` ainda são os do template (placeholders `<…>` ou sem
+   alteração) e não há specs nem ADRs além dos templates.
+   - **Pasta vazia e `docs/` sem conteúdo** → não siga. Diga em uma frase que não achou nada,
+     nomeando a pasta procurada (ex.: "não encontrei nada em `_import/`, e os docs ainda são o
+     template"), e pergunte, com `AskUserQuestion` quando disponível:
+     1. **Vou adicionar os arquivos (Recomendado):** copie para a pasta ou mande no próximo chat
+        (anexados). O que costuma entrar: PRD, design system (md ou PDF), telas, demo, notas.
+     2. **Seguir sem material:** entrevista do zero.
+     3. **Usar outra pasta:** o usuário informa o caminho.
+   - **Pasta vazia, mas `docs/` já tem conteúdo** → siga e diga que o inventário vai olhar só `docs/`.
+   - **`$ARGUMENTS` aponta para uma pasta que não existe** → diga isso, nomeando o caminho, e
+     ofereça as mesmas três opções.
+
+   Depois da resposta:
+   - **Vou adicionar:** pare e espere. Quando o usuário mandar os arquivos no chat, salve-os em
+     `_import/` com os nomes originais (sem reescrever) e confirme a lista ("salvei N arquivos em
+     `_import/`: …"). Se ele disser que copiou na pasta, releia-a. Aí continue do passo 3.
+   - **Seguir sem material:** marque todos os itens do checklist como `falta` e vá para a Fase 2
+     com o relatório mostrando que tudo `falta`. Quando o checklist for gravado (Fase 2, passo 6),
+     a primeira linha do Registro da entrevista diz `sem material`. A entrevista começa pelos
+     itens 1 e 2 (visão e features).
+   - **Usar outra pasta:** use-a como a pasta do material daqui em diante e refaça este passo.
+
+   Sem ninguém para responder (sessão não interativa): pare com a mesma mensagem e não invente
+   nada. Nunca avance para o relatório sem material e sem a resposta do usuário.
+3. Leia todo o material da pasta (md, PDF, imagens, HTML da demo) e o que já existe em `docs/`.
+4. Para cada item do checklist, defina o status (`tem`, `parcial`, `falta`, `n/a`) e a evidência
    (`arquivo §seção`). Um arquivo pode cobrir vários itens.
-4. Anote as contradições entre fontes (ex.: o PRD diz web, a demo é mobile).
-5. Liste os trechos do material sobre **fases, milestones, ordem de entrega** e **trabalho a
+5. Anote as contradições entre fontes (ex.: o PRD diz web, a demo é mobile).
+6. Liste os trechos do material sobre **fases, milestones, ordem de entrega** e **trabalho a
    construir** (planos de entrega, listas de tarefas, backlog), cada um com a fonte
    (`arquivo §seção`) e a feature `F#` quando casar. Eles vão para a seção "Para o /planejar" do
    `docs/preparo.md`, sem decidir nada.
@@ -142,6 +171,7 @@ usuário aceitar):
 ## Nunca
 
 - Inventar conteúdo (requisito, decisão, texto de interface, valor de token).
+- Seguir para o relatório sem material e sem a resposta do usuário (passo "Material vazio").
 - Criar issues: isso é do `/planejar`.
 - Organizar, mover ou reescrever arquivos antes do "pode seguir" da Fase 2.
 - Fazer mais de 4 perguntas numa rodada, ou emendar rodadas sem perguntar se continua.

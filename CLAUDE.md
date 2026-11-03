@@ -27,7 +27,7 @@ Siga o comando; as frases ao lado continuam valendo e levam ao mesmo comando.
 
 | Fase | Comando | Frase | Para quando |
 |---|---|---|---|
-| Preparar os docs | `/preparar [pasta]` | "importe meus docs", "prepare o projeto" | `docs/preparo.md` em `fase: pronto` e PR de docs aberto |
+| Preparar os docs | `/preparar [pasta]` | "importe meus docs", "prepare o projeto" | `docs/preparo.md` em `fase: pronto` e PR de docs aberto (sem nada em `_import/` e com os docs no template, ele avisa e espera os arquivos, que podem vir no chat) |
 | Planejar: visão geral | `/planejar` | "planeje o roadmap" | PR `[docs] Roadmap: visão geral` aberto |
 | Planejar: um milestone | `/planejar M<n>` | "planeje o M1" | PR `[docs] Planejar M<n>` aberto, issues criadas |
 | Implementar | `/implementar [issue]` | "próxima task", "implemente a issue N" | commits locais, antes do push |
