@@ -25,7 +25,7 @@ done
 URL="${URL:-${TEMPLATE_URL:-https://github.com/murilinhoPs/docs-lite-template.git}}"
 
 # Pode trazer inteiro (menos os protegidos que estão dentro deles).
-INTEIROS=(.claude scripts .github CLAUDE.md AGENTS.md)
+INTEIROS=(.claude scripts .github CLAUDE.md AGENTS.md docs/guia.md)
 # Mesclar à mão, se o projeto personalizou.
 MESCLAR=(docs/README.md docs/qa/print-rules.md docs/prompts docs/specs/_template.md
   docs/adr/_template.md docs/milestones/_template.md docs/adr/README.md)

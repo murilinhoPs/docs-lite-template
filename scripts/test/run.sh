@@ -582,6 +582,13 @@ check "sessão não interativa: para e não gera relatório (CA-K4)" \
 check "README, docs/README, prompt de setup e CLAUDE.md dizem que ele avisa e espera os arquivos (CA-K5)" \
   bash -c 'for f in README.md docs/README.md docs/prompts/setup-a-partir-de-docs.md CLAUDE.md; do grep -q "avisa e espera os arquivos" "$f" || { echo "$f"; exit 1; }; done'
 
+echo "guia do processo"
+check "docs/guia.md existe, diz que o CLAUDE.md manda e tem o fluxo" \
+  bash -c 'f=docs/guia.md; grep -q "se este" "$f" && grep -q "vale o que está lá" "$f" && grep -qF "/planejar (visão geral) → merge" "$f"'
+check "README e docs/README apontam para o guia" bash -c 'grep -q "docs/guia.md" README.md && grep -q "(guia.md)" docs/README.md'
+check "o guia vem inteiro do template (atualiza-template.sh e README)" \
+  bash -c 'grep -q "INTEIROS=(.* docs/guia.md)" scripts/atualiza-template.sh && grep -q "AGENTS.md\`, \`docs/guia.md\` |" README.md'
+
 echo "consistência (CA-H1, CA-H2)"
 cd "$SRC"
 check "todo ./scripts/X citado no CLAUDE.md, READMEs e comandos existe e é executável" \
