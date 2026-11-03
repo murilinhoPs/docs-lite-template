@@ -17,7 +17,7 @@ comportamento atualiza a spec no mesmo PR.
 
 | Arquivo / pasta | O que guarda |
 |---|---|
-| [preparo.md](preparo.md) | Checklist do preparo (o que o projeto precisa antes do `/planejar`) e registro da entrevista |
+| [preparo.md](preparo.md) | Checklist do preparo (o que o projeto precisa antes do `/planejar`), a seção "Para o /planejar" (o que o material diz sobre fases, ordem de entrega e trabalho a fazer) e o registro da entrevista |
 | [overview.md](overview.md) | Resumo do projeto, stack e arquitetura |
 | [prd.md](prd.md) | Visão, escopo, MoSCoW e a tabela de Features (`F1`, `F2`…) |
 | [specs/](specs/) | Uma spec viva por feature, com os AC vigentes (`AC-F<n>-NN`) |
@@ -34,6 +34,8 @@ comportamento atualiza a spec no mesmo PR.
 - A ordem das linhas em `roadmap.md` é a ordem de execução. Cada linha é uma issue.
 - Planejamento em duas etapas: `/planejar` escreve a visão geral dos milestones; `/planejar M<n>`
   detalha só o próximo. Nunca existem issues (nem milestone no GitHub) de milestones futuros.
+  O material sobre fases e trabalho a fazer passa do `/preparar` para o `/planejar` pela seção
+  "Para o /planejar" do `preparo.md`.
 - Fluxo: `/preparar` → merge → `/planejar` (visão geral) → merge → `/planejar M0` → merge → ciclo das tasks do M0 → `/fechar` (go/no-go) → `/planejar M1` → ciclo → `/fechar` → `/planejar M2` ….
 - `roadmap.md` guarda o destino de cada issue (`todo`, `doing`, `done`). O board espelha o roadmap
   e o andamento no GitHub (issue fechada → `done`, PR aberto → `review`), pelo

@@ -211,7 +211,9 @@ saber o que separar.
 5. **Pronto:** com os itens que travam resolvidos, ele abre o PR `[docs] Preparo do projeto`.
    Depois do merge, rode `/planejar` (visão geral) e, com ele mergeado, `/planejar M0`.
 
-Ele não inventa conteúdo e não cria issues (isso é do `/planejar`). O mapa "material → destino"
+Ele não inventa conteúdo e não cria issues (isso é do `/planejar`). O que o material diz sobre
+fases, ordem de entrega e trabalho a fazer fica registrado na seção "Para o /planejar" do
+`preparo.md`, e o `/planejar` parte dali. O mapa "material → destino"
 e as regras de importação estão em [`.claude/commands/preparar.md`](.claude/commands/preparar.md).
 Também há um prompt pronto em
 [`docs/prompts/setup-a-partir-de-docs.md`](docs/prompts/setup-a-partir-de-docs.md).

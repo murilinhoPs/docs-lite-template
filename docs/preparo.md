@@ -36,6 +36,27 @@ Nível: **trava** (sem isso o /planejar não roda) · **ajuda** (pode ficar para
 - Item `trava` que ficou `parcial` só por `> Pendente:` não impede o `pronto` se o usuário aceitar;
   o `/planejar` deixa as issues que dependem dele para depois.
 
+## Para o /planejar
+
+<!-- Preenchido pelo /preparar. O que o material diz sobre ordem de entrega e trabalho a fazer.
+     Não é decisão: é ponto de partida para o /planejar, que decide com o usuário. -->
+
+### Fases, milestones e ordem de entrega
+
+| # | O que o material diz | Fonte (arquivo §seção) | Features (F#) |
+|---|----------------------|------------------------|---------------|
+
+### Trabalho a construir
+
+| # | Item | Fonte (arquivo §seção) | Feature (F#) | Observação |
+|---|------|------------------------|--------------|------------|
+
+- Uma linha por trecho do material, citando a fonte, sem reescrever nem decidir nada.
+- "Features" e "Feature" usam os ids `F#` do PRD; se o trecho não casa com nenhuma feature, deixe
+  vazio e escreva o motivo em Observação.
+- Contradições entre fontes (ex.: duas ordens diferentes) entram como linhas separadas, e a
+  contradição vai para a entrevista como as outras.
+
 ## Registro da entrevista
 
 <!-- uma linha por rodada: data, itens tratados, decisões, o que virou Pendente -->

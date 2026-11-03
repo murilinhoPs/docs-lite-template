@@ -73,6 +73,15 @@ Rodar tudo: `./scripts/test/run.sh` (precisa de `bash`, `git`, `jq`, `yq` e `pyt
 | CA-G7 | `/fechar` confere o critério de saída, fecha o milestone e registra o go/no-go | run: "/fechar: … (CA-G7)", "/planejar M<n+1> registra o encerramento no PR dele …"; fumaça: passo 8 |
 | CA-G8 | Mesmo fluxo de G7 em todos os docs | run: "mesmo fluxo … (CA-E5, CA-G8)", "fluxo completo: /fechar com go/no-go e /planejar M1 depois (CA-G8)" |
 
+## Parte I (notas do /preparar para o /planejar)
+
+| CA | O que | Cobertura |
+|---|---|---|
+| CA-I1 | `docs/preparo.md` tem a seção "Para o /planejar" com as duas tabelas e as colunas | run: "preparo.md: seção Para o /planejar com as duas tabelas e as colunas (CA-I1)"; manual: `grep -n "Para o /planejar\|^### Fases\|^### Trabalho" docs/preparo.md` |
+| CA-I2 | `preparar.md` sem "fica anotado" e gravando a seção nas fases 1, 2 e 4 (e a 3 só pergunta se contraditório) | run: "preparar.md sem \"fica anotado\" … (CA-I2)"; manual: `grep -n "fica anotado" .claude/commands/preparar.md` (vazio) |
+| CA-I3 | `planejar.md` lê a seção no modo 1 (ponto de partida, fonte e divergências) e no modo 2 (trabalho a construir), sem alterá-la | run: "planejar.md lê a seção nos dois modos e não a altera (CA-I3)"; manual: `grep -n "Para o /planejar" .claude/commands/planejar.md` |
+| CA-I4 | `CLAUDE.md`, READMEs e esta matriz atualizados; `run.sh` e `smoke.sh` passando | run: "CLAUDE.md, docs/README.md e README citam a passagem pela seção (CA-I4)" e a suíte toda |
+
 ## Parte H (fechamento)
 
 | CA | O que | Cobertura |

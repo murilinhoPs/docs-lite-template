@@ -26,7 +26,9 @@ Regra de ouro: **nunca existem issues (nem milestone no GitHub) de milestones fu
 Pré-condições: `docs/preparo.md` com `fase: pronto` (se não, avise e pergunte se segue mesmo
 assim) e a tabela Features do `docs/prd.md` preenchida.
 
-1. Leia `docs/prd.md`, as specs que existem, os ADRs, `docs/overview.md` e `docs/preparo.md`.
+1. Leia `docs/prd.md`, as specs que existem, os ADRs, `docs/overview.md` e `docs/preparo.md`,
+   incluindo a seção **"Para o /planejar"**: as linhas de "Fases, milestones e ordem de entrega"
+   são o ponto de partida da seção Milestones. Se a tabela estiver vazia, proponha do zero.
 2. `git switch main && git pull && git switch -c plan/roadmap`. Escreva a seção **Milestones** do
    `docs/roadmap.md`. Para cada milestone, **só**:
    - `### M<n> — <nome>` (travessão; o mesmo título será usado no GitHub);
@@ -38,7 +40,9 @@ assim) e a tabela Features do `docs/prd.md` preenchida.
    contém a issue de setup (criada pelo `bootstrap.sh`).
 4. Cada feature `F#` entra em **no máximo um** milestone; features `Won't` ficam fora.
    Dúvidas viram `> Pendente:` no próprio roadmap. Atualize o `updated:` do roadmap.
-5. Mostre a seção Milestones e **pare** até o "pode seguir". Ajuste até a aprovação.
+5. Mostre a seção Milestones dizendo quais milestones vieram do material (com a fonte, da seção
+   "Para o /planejar") e onde a proposta diverge dele e por quê, e **pare** até o "pode seguir".
+   Ajuste até a aprovação.
 6. Depois do ok: commit (`docs: roadmap, visão geral`), `git push -u origin plan/roadmap` e um PR
    só de docs, `[docs] Roadmap: visão geral`, pelo template (sem `Closes`, `**Tipo:** só docs`,
    testes e prints `n/a: PR só de docs`):
@@ -58,13 +62,16 @@ assim) e a tabela Features do `docs/prd.md` preenchida.
 1. Releia o `roadmap.md`, o PRD, as specs, os ADRs e **o que mudou desde o milestone anterior**:
    `git log` do milestone anterior, issues de follow-up `prio:baixa` sem linha no roadmap
    (`gh api "repos/{owner}/{repo}/issues?state=open&labels=prio:baixa"`) e os `> Pendente:` que sobraram.
+   Leia também, na seção "Para o /planejar" do `docs/preparo.md`, as linhas de **"Trabalho a
+   construir"** cujas features entram neste milestone: elas entram na quebra em issues.
 2. Escreva `docs/milestones/m<n>.md` a partir de `docs/milestones/_template.md`, curto. AC novo
    de feature nasce na spec da feature (`AC-F<n>-NN`, próximo ID livre); o doc só referencia.
 3. Quebre em **issues pequenas** (uma por feature ou tela), cada uma com: título `[feat] ...`,
    área, links para o doc do milestone e a spec, ACs, prioridade (se pedida), posição no roadmap e
    **"Como verificar"** (teste automatizado, fluxo manual, plataformas; se precisa de print →
    `type:design`). Corpo no formato de `docs/prompts/issue-feature.md`. Follow-ups `prio:baixa`
-   que entram neste milestone vão com `./scripts/new-issue.sh --existing <N>`.
+   que entram neste milestone vão com `./scripts/new-issue.sh --existing <N>`. Issue que veio de
+   uma linha de "Trabalho a construir" cita a fonte no corpo (`Fonte: <arquivo §seção>`, em Contexto).
 4. Mostre o doc e a lista de issues e **pare** até o "pode seguir". Nada é criado antes.
 5. Depois do ok, numa branch `plan/m<n>` a partir da `main` atualizada:
    1. o encerramento do milestone anterior, a partir da descrição dele no GitHub: o doc
@@ -101,3 +108,4 @@ assim) e a tabela Features do `docs/prd.md` preenchida.
 - Mexer no board à mão: ele só muda pelo `./scripts/sync-board.sh`.
 - Inventar requisito: o que falta vira `> Pendente:` ou `TODO:`. Reaproveitar ID de feature ou de AC.
 - Misturar código num PR de planejamento, ou dar push na `main`.
+- Alterar a seção "Para o /planejar" do `docs/preparo.md`: ela é registro do material importado.

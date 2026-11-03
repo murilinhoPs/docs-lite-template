@@ -34,17 +34,24 @@ Sempre na branch `prep/docs`: `git switch prep/docs` se existir (local ou em `or
 3. Para cada item do checklist, defina o status (`tem`, `parcial`, `falta`, `n/a`) e a evidência
    (`arquivo §seção`). Um arquivo pode cobrir vários itens.
 4. Anote as contradições entre fontes (ex.: o PRD diz web, a demo é mobile).
+5. Liste os trechos do material sobre **fases, milestones, ordem de entrega** e **trabalho a
+   construir** (planos de entrega, listas de tarefas, backlog), cada um com a fonte
+   (`arquivo §seção`) e a feature `F#` quando casar. Eles vão para a seção "Para o /planejar" do
+   `docs/preparo.md`, sem decidir nada.
 
 ### Fase 2: relatório + plano de organização
 
 1. Mostre a tabela do checklist preenchida, com os itens que travam primeiro.
 2. Mostre o plano de organização dos arquivos: origem → destino → ação (**mover**,
    **reescrever no template**, **dividir**, **mesclar**, **não importar**), pelo mapa abaixo.
-3. Mostre as contradições e a ordem da entrevista.
-4. **Pare** e pergunte: "posso organizar os arquivos e começar a entrevista?". Ajuste o plano
+3. Mostre a lista de trechos para a seção "Para o /planejar" (as duas tabelas: fases, milestones e
+   ordem de entrega; trabalho a construir).
+4. Mostre as contradições e a ordem da entrevista.
+5. **Pare** e pergunte: "posso organizar os arquivos e começar a entrevista?". Ajuste o plano
    até o "pode seguir".
-5. Depois da aprovação: organize os arquivos (`git mv` quando só mudam de lugar), grave o
-   checklist com `fase: entrevista` e `updated:` de hoje, e faça commit
+6. Depois da aprovação: organize os arquivos (`git mv` quando só mudam de lugar), grave o
+   checklist com `fase: entrevista` e `updated:` de hoje, grave a lista na seção
+   "Para o /planejar" do `preparo.md` e faça tudo num commit
    (`docs: inventário e organização do material`).
 
 ### Fase 3: entrevista (rodadas)
@@ -62,7 +69,9 @@ o que está `tem` ou `n/a` não volta.
      índice de `docs/adr/README.md` atualizado;
    - em fluxo de usuário, pergunte o que acontece no erro, no vazio e no carregando de cada tela
      Must, não só no caminho feliz;
-   - pergunte sobre o que o material diz, nunca o que você já sabe.
+   - pergunte sobre o que o material diz, nunca o que você já sabe;
+   - não pergunte sobre ordem de entrega nem quebre trabalho em tarefas (isso é do `/planejar`):
+     só pergunte sobre um trecho da seção "Para o /planejar" se ele for contraditório ou ilegível.
 3. Respostas:
    - resposta concreta → escreva no destino (template, frontmatter) e marque `tem` ou `parcial`;
    - "não sei ainda" → `> Pendente: <pergunta>` no destino; o item fica `parcial`;
@@ -89,6 +98,8 @@ usuário aceitar):
    - os ADRs e o status de cada um;
    - os `> Pendente:` que sobraram, por arquivo;
    - os itens `ajuda` em aberto;
+   - quantas linhas ficaram em cada tabela da seção "Para o /planejar" (fases e ordem de entrega;
+     trabalho a construir);
    - o próximo passo: merge do PR (`./scripts/merge.sh <pr> <head>`), depois `/planejar` (visão
      geral dos milestones no roadmap) e, com esse PR mergeado, `/planejar M0`.
 
@@ -104,7 +115,7 @@ usuário aceitar):
 | Tela aprovada, mockup | `docs/assets/screens/` |
 | Referência visual, logo, moodboard | `docs/assets/design/` |
 | Dispositivos, tamanhos de tela, regras de teste e prints | `docs/qa/print-rules.md` |
-| Funcionalidade ou trabalho a construir | **não aqui**: fica anotado para o `/planejar` (issues) |
+| Funcionalidade ou trabalho a construir; fases, milestones, ordem de entrega | **não aqui**: vai para a seção Para o /planejar do `docs/preparo.md` (o `/planejar` decide) |
 
 ## Regras de importação
 
@@ -115,8 +126,9 @@ usuário aceitar):
   reaproveitados.
 - ADRs recebem o próximo número livre; o status segue a resposta do usuário (`Aceita` ou
   `Proposta`). Atualize o índice em `docs/adr/README.md`.
-- Milestones e ordem de entrega não são decididos aqui: o material sobre isso fica anotado para o
-  `/planejar`, que escreve a seção Milestones do `roadmap.md` (o PRD só aponta para ela).
+- Milestones e ordem de entrega não são decididos aqui: o material sobre isso vai para a seção
+  Para o /planejar do `docs/preparo.md`; o `/planejar` lê de lá e escreve a seção Milestones do
+  `roadmap.md` (o PRD só aponta para ela).
 - Um doc pode virar vários destinos; vários docs podem virar um. Trechos sem destino, pergunte.
 - Os originais que foram reescritos ficam em `docs/assets/originais/` ou são apagados, como o
   usuário decidir no plano.

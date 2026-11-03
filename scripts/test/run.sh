@@ -464,6 +464,16 @@ check "nenhum comando gh de GraphQL nos docs e scripts" \
   bash -c '! grep -rnE "$0" CLAUDE.md docs/ .claude/ scripts/ --exclude=bootstrap.sh' "$GRAPHQL_CMDS"
 check "nenhuma referência à pasta antiga de tasks" bash -c '! grep -rn "docs/""tasks" . --exclude-dir=.git'
 
+echo "notas do /preparar para o /planejar (Parte I)"
+check "preparo.md: seção Para o /planejar com as duas tabelas e as colunas (CA-I1)" \
+  bash -c 'f=docs/preparo.md; grep -qx "## Para o /planejar" "$f" && grep -qx "### Fases, milestones e ordem de entrega" "$f" && grep -qxF "| # | O que o material diz | Fonte (arquivo §seção) | Features (F#) |" "$f" && grep -qx "### Trabalho a construir" "$f" && grep -qxF "| # | Item | Fonte (arquivo §seção) | Feature (F#) | Observação |" "$f" && awk "/^## Para o \/planejar/ { p = NR } /^## Registro da entrevista/ { r = NR } END { exit !(p && r && p < r) }" "$f"'
+check "preparar.md sem \"fica anotado\" e gravando a seção nas fases 1, 2 e 4 (CA-I2)" \
+  bash -c 'f=.claude/commands/preparar.md; ! grep -q "fica anotado" "$f" && for fase in "Fase 1" "Fase 2" "Fase 3" "Fase 4"; do sed -n "/^### $fase/,/^###/p" "$f" | grep -q "Para o /planejar" || { echo "$fase"; exit 1; }; done; grep -q "não pergunte sobre ordem de entrega nem quebre trabalho em tarefas" "$f" && grep -q "vai para a seção Para o /planejar do \`docs/preparo.md\`" "$f"'
+check "planejar.md lê a seção nos dois modos e não a altera (CA-I3)" \
+  bash -c 'f=.claude/commands/planejar.md; sed -n "/^### Modo 1/,/^### Modo 2/p" "$f" | grep -q "ponto de partida da seção Milestones" && sed -n "/^### Modo 1/,/^### Modo 2/p" "$f" | grep -q "quais milestones vieram do material (com a fonte" && sed -n "/^### Modo 2/,/^## Onde parar/p" "$f" | grep -q "Trabalho a\$\|Trabalho a construir" && grep -q "Alterar a seção \"Para o /planejar\"" "$f"'
+check "CLAUDE.md, docs/README.md e README citam a passagem pela seção (CA-I4)" \
+  bash -c 'for f in CLAUDE.md docs/README.md README.md; do grep -q "\"Para o /planejar\"" "$f" || { echo "$f"; exit 1; }; done'
+
 echo "consistência (CA-H1, CA-H2)"
 cd "$SRC"
 check "todo ./scripts/X citado no CLAUDE.md, READMEs e comandos existe e é executável" \

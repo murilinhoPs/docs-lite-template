@@ -47,6 +47,8 @@ tasks do M0 (`/implementar` … `/fechar`) → `/fechar` (go/no-go) → `/planej
   escreve `docs/milestones/m<n>.md`, cria o milestone no GitHub e as issues, num PR de docs.
 - **Nunca existem issues, nem milestone no GitHub, de milestones futuros.** O `bootstrap.sh` cria
   só o M0; os outros nascem no `/planejar M<n>`.
+- O material importado sobre fases, ordem de entrega e trabalho a fazer passa do `/preparar` para
+  o `/planejar` pela seção "Para o /planejar" do `docs/preparo.md` (registro, não decisão).
 - Uma feature `F#` entra em no máximo um milestone; features `Won't` ficam fora. Milestone novo
   entra só no `roadmap.md` (etapa 1) e no GitHub (etapa 2); o PRD aponta para o roadmap.
 
