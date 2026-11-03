@@ -23,9 +23,13 @@
 - **O board espelha o roadmap e o andamento:** `./scripts/sync-board.sh` calcula a Etapa (issue
   fechada → `done`, PR aberto → `review`, roadmap `doing`/`done` sem PR → `doing`, senão `todo`).
   Mude o roadmap, nunca o board.
+- **Qual fonte manda:** este README é o guia para pessoas; o agente segue o [`CLAUDE.md`](CLAUDE.md)
+  e os comandos de `.claude/commands/`. Guias, tutoriais ou docs fora do repo são resumos; se
+  divergirem, vale o que está no `CLAUDE.md` e nos comandos.
 - **O Claude Code trabalha por comandos** (`.claude/commands/`), um por fase, e segue o
-  [`CLAUDE.md`](CLAUDE.md). Outras ferramentas (Codex, opencode, Cursor) leem o
-  [`AGENTS.md`](AGENTS.md), um link para o `CLAUDE.md`; os comandos de `.claude/` são só do Claude Code.
+  [`CLAUDE.md`](CLAUDE.md). Outras ferramentas (Codex, opencode, Hermes, Cursor) leem o
+  [`AGENTS.md`](AGENTS.md), um arquivo curto que manda seguir o `CLAUDE.md` e os arquivos dos
+  comandos (veja "Em outros agentes" no `CLAUDE.md`).
 - **Só API REST do repositório:** os scripts (`new-issue.sh`, `task-status.sh`, `open-pr.sh`,
   `merge.sh`) usam `gh api repos/{owner}/{repo}/...` e funcionam em qualquer ambiente, inclusive
   nas sessões do Claude Code na nuvem. A exceção é o `sync-board.sh` (`gh project`).
@@ -161,6 +165,33 @@ A aprovação (`/abrir-pr`) vale para um head específico. O ruleset da `main`, 
   (inclui o `Closes #X`). Coautoria: `open-pr.sh --coauthor "Nome <email>"` põe o
   `Co-authored-by:` como última linha do corpo, que é onde o GitHub reconhece o trailer.
 
+## Quando algo dá errado
+
+Na coluna Sintoma, o texto entre crases é a mensagem que o script, o check ou o comando imprime.
+
+| Sintoma | Causa | O que fazer |
+|---|---|---|
+| `pr-gate` vermelho: `Head do corpo desatualizado` | push depois de o corpo do PR ser escrito | `./scripts/open-pr.sh --update <pr>` (o `/corrigir` e o `/abrir-pr` já fazem); se o push mudou código, teste de novo |
+| `pr-gate` vermelho: `O corpo do PR não tem a linha **Head:**` | PR aberto à mão (ex.: o do `board.conf`) | `./scripts/open-pr.sh --update <pr>` |
+| `pr-gate` vermelho: `e o código mudou até o head` | os prints são de um commit anterior e o código mudou depois | `/qa` de novo (prints do head atual) e `--update`; ou `--prints "n/a: <motivo>"` se a mudança não é visual |
+| `pr-gate` vermelho: `não bate com o commit` ou `print_sizes.txt na branch pr-assets` | a pasta citada não é a dos prints, ou não existe | `/qa` de novo e `./scripts/open-pr.sh --update <pr>` |
+| `open-pr.sh`: `Não há prints em pr-assets/issue-` | nenhum print vale para o head (nunca rodou o `/qa`, ou o código mudou depois) | `/qa`, ou `--prints "n/a: <motivo>"` |
+| `open-pr.sh`: `Há commits sem push` ou `A branch não tem upstream` | o PR só abre com tudo enviado | `git push -u origin task/<N>-<slug>` |
+| merge bloqueado: branch atrás da `main` (ruleset strict) | a `main` andou | pedir "atualize a branch": rebase em `origin/main`, push e `--update` |
+| conflito no rebase (`CONFLICT` do git) | a mesma parte mudou na `main` | o agente para e mostra os arquivos; você decide |
+| `merge.sh`: `Head branch was modified` | push depois do review ou do sha copiado | conferir o push; `/revisar` se mudou código; rodar o `merge.sh` com o head atual |
+| `merge.sh`: `Use o sha completo (40 caracteres) do head` | sha curto ou errado | copiar o head de 40 caracteres que o `/abrir-pr` mostra |
+| `/implementar` para: `escreva o AC na spec` | a issue cita um AC que ninguém escreveu | escrever o AC na spec (no PR da task ou pelo `/planejar M<n>` do milestone atual) |
+| `/implementar` para: `ainda está aberta: falta o merge ou o /fechar` | o PR anterior não foi mergeado ou o `/fechar` não rodou | merge e `/fechar`, ou passar o número da issue para pular a ordem |
+| `/implementar` pergunta: `está em andamento; faço o hotfix` | `/implementar <N>` com outra task `doing` | confirmar (o agente guarda a task atual num commit `wip:` local) ou negar |
+| `/planejar M<n>` recusa: `só planejo o milestone que for o próximo` | o milestone anterior não foi encerrado (ou o M0 não teve go) | `/fechar` do anterior; no M0, registrar o go/no-go |
+| `new-issue.sh`: `não existe no repo` (milestone) | o milestone ainda não foi criado no GitHub | `./scripts/new-milestone.sh "M<n> — <nome>"` (no `/planejar M<n>`) |
+| `sync-board.sh`: `gh sem acesso ao Projects` | `gh` sem o escopo `project` (ou sessão na nuvem) | `gh auth refresh -s project` e rodar localmente |
+| `sync-board.sh`: `Sem scripts/board.conf` | o bootstrap não criou o board | `./scripts/bootstrap.sh` de novo, depois de liberar o escopo |
+| `sync-board.sh`: `Campos Etapa/Ordem não encontrados` | o projeto não tem os campos | criar `Etapa` (todo, doing, review, done) e `Ordem` (number) no projeto, ou rodar o bootstrap num projeto novo |
+| card no lugar errado | alguém arrastou à mão, ou o roadmap está diferente | `./scripts/sync-board.sh`; se continuar, corrigir o roadmap |
+| `ci` sempre verde: `configure os testes da stack em .github/workflows/ci.yml` | o `ci.yml` ainda é o placeholder | preencher lint e testes da stack (AC da issue de setup) |
+
 ## Checklist do projeto novo
 
 - [ ] Rodar `./scripts/bootstrap.sh` localmente (não funciona numa sessão na nuvem)
@@ -218,6 +249,32 @@ e as regras de importação estão em [`.claude/commands/preparar.md`](.claude/c
 Também há um prompt pronto em
 [`docs/prompts/setup-a-partir-de-docs.md`](docs/prompts/setup-a-partir-de-docs.md).
 
-**Usando outra IA?** Codex, opencode e Cursor leem o `AGENTS.md` (link para o `CLAUDE.md`), mas
-não rodam os comandos do Claude Code. Peça para ela seguir o arquivo do comando da fase
-(`.claude/commands/<fase>.md`), começando por `.claude/commands/preparar.md`.
+**Usando outra IA?** Codex, opencode, Hermes e Cursor leem o `AGENTS.md`, que manda seguir o
+`CLAUDE.md`, mas não rodam os comandos do Claude Code. Peça para ela seguir o arquivo do comando
+da fase (`.claude/commands/<fase>.md`), começando por `.claude/commands/preparar.md`. O `/revisar`
+roda numa sessão nova, sem o contexto de quem implementou (veja "Em outros agentes" no `CLAUDE.md`).
+
+## Atualizar a partir do template
+
+Repos criados a partir de um template não recebem as mudanças dele. Para trazer o processo novo
+para um projeto antigo:
+
+1. `git switch main && git pull && git switch -c chore/atualiza-template`
+2. `./scripts/atualiza-template.sh` mostra o que mudou (não altera nada). Se o projeto ainda não
+   tem esse script, copie-o do template antes.
+3. `./scripts/atualiza-template.sh --aplicar` traz os caminhos "pode trazer inteiro" e mantém os
+   protegidos (não faz commit). Revise com `git diff --cached` e mescle à mão o que ele listar.
+4. `./scripts/bootstrap.sh` (cria só o que falta, como labels novas).
+5. Reaplique no `CLAUDE.md` as regras próprias do projeto, se havia, e abra o PR
+   `[chore] Atualiza processo do template`.
+
+O template padrão é `https://github.com/murilinhoPs/docs-lite-template.git`; para outro, passe a
+URL como argumento ou em `TEMPLATE_URL`.
+
+| | Caminhos |
+|---|---|
+| **Pode trazer inteiro** | `.claude/`, `scripts/` (menos `scripts/board.conf`), `.github/` (menos `.github/workflows/ci.yml`), `CLAUDE.md`, `AGENTS.md` |
+| **Mesclar à mão, se personalizou** | `docs/README.md`, `docs/qa/print-rules.md`, `docs/prompts/`, os `_template.md`, `docs/adr/README.md` (o índice é do projeto; só o texto de cima vem do template) |
+| **Nunca sobrescrever** | `docs/prd.md`, `docs/roadmap.md`, `docs/preparo.md`, `docs/overview.md`, `docs/specs/*` (menos o template), `docs/adr/0*`, `docs/milestones/m*`, `docs/design/*`, `docs/assets/*`, `scripts/board.conf`, `.github/workflows/ci.yml` |
+
+O script não apaga do projeto o que o template apagou: confira com o `git diff --stat` que ele mostra.

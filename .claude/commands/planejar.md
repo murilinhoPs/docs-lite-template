@@ -58,7 +58,8 @@ assim) e a tabela Features do `docs/prd.md` preenchida.
      (`gh api "repos/{owner}/{repo}/milestones?state=closed" -q '.[] | select(.title | startswith("M<n-1> ")) | .description'`).
      Para o M1, a descrição do M0 também diz `go/no-go: go`. Para o M0, basta o roadmap mergeado
      (a issue de setup já existe).
-   - Se não, **pare**: "só planejo o milestone que for o próximo".
+   - Se não, **pare**: "só planejo o milestone que for o próximo" (e diga o que falta: o `/fechar`
+     do anterior ou, no M0, o go/no-go).
 1. Releia o `roadmap.md`, o PRD, as specs, os ADRs e **o que mudou desde o milestone anterior**:
    `git log` do milestone anterior, issues de follow-up `prio:baixa` sem linha no roadmap
    (`gh api "repos/{owner}/{repo}/issues?state=open&labels=prio:baixa"`) e os `> Pendente:` que sobraram.

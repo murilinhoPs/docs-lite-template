@@ -9,6 +9,7 @@
 #   ./scripts/new-issue.sh --title "[feat] ..." --body-file corpo.md --milestone "M1 — <nome>" \
 #     --labels "type:feature,area:x" [--after <N>]
 #   ./scripts/new-issue.sh --existing <N> [--after <N>]   # issue que já existe (ex.: bug)
+#     (se a linha já está no roadmap, --after a move para logo depois da outra: hotfix)
 # Imprime: o número da issue.
 set -euo pipefail
 
@@ -45,6 +46,7 @@ if [ -n "$EXISTING" ]; then
   N="${EXISTING#\#}"
   [[ "$N" =~ ^[0-9]+$ ]] || usage
   if roadmap_has "$ROADMAP" "$N"; then
+    [ -z "$AFTER" ] || roadmap_move "$ROADMAP" "$N" "$AFTER"
     echo "$N"
     exit 0
   fi

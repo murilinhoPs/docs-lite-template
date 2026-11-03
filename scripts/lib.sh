@@ -138,6 +138,30 @@ roadmap_insert() {
   rm -f "$tmp"
 }
 
+# Move a linha de uma issue para logo depois da de outra e renumera a Ordem.
+# Status, spec e PR da linha são mantidos. roadmap_move <arquivo> <N> <depois da issue>
+roadmap_move() {
+  local tmp
+  tmp="$(mktemp)"
+  awk -v n="#$2" -v after="#$3" "$ROADMAP_AWK"'
+    { line[NR] = $0; isrow[NR] = track($0) }
+    END {
+      for (i = 1; i <= NR; i++) if (isrow[i] && issue_of(line[i]) == n) src = i
+      for (i = 1; i <= NR; i++) if (isrow[i] && issue_of(line[i]) == after) at = i
+      if (!src || !at) { print "Issue " (src ? after : n) " não está no roadmap." > "/dev/stderr"; exit 2 }
+      k = 0
+      for (i = 1; i <= NR; i++) {
+        if (i == src) continue
+        out = line[i]
+        if (isrow[i]) sub(/^\|[^|]*\|/, "| " ++k " |", out)
+        print out
+        if (i == at) { r = line[src]; sub(/^\|[^|]*\|/, "| " ++k " |", r); print r }
+      }
+    }' "$1" > "$tmp" || { rm -f "$tmp"; return 1; }
+  cat "$tmp" > "$1"
+  rm -f "$tmp"
+}
+
 # Caminho da spec citada no corpo da issue ("**Spec:** docs/specs/x.md (F2)"), ou vazio.
 spec_from_body() {
   grep -m1 -oE '\*\*Spec:\*\*[[:space:]]*docs/specs/[^[:space:])]+\.md' <<<"$1" | grep -oE 'docs/specs/[^[:space:]]+' || true

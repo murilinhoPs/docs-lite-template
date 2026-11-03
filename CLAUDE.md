@@ -1,5 +1,8 @@
 # Processo de trabalho
 
+Este arquivo e `.claude/commands/` são a fonte do processo. Guias, tutoriais ou docs fora do repo
+são resumos para pessoas; se divergirem, vale o que está aqui.
+
 | O quê | Onde | Pergunta que responde |
 |---|---|---|
 | Visão, escopo, features | `docs/prd.md` | O que o produto é e por quê |
@@ -37,6 +40,22 @@ Siga o comando; as frases ao lado continuam valendo e levam ao mesmo comando.
 Fluxo: `/preparar` → merge → `/planejar` (visão geral) → merge → `/planejar M0` → merge → ciclo das
 tasks do M0 (`/implementar` … `/fechar`) → `/fechar` (go/no-go) → `/planejar M1` → ciclo → `/fechar`
 → `/planejar M2` …
+
+## Em outros agentes
+
+O `AGENTS.md` aponta para este arquivo. Para agentes sem os recursos do Claude Code:
+
+- **Sem slash commands:** quando o usuário pedir `/<comando> [args]` (ou a frase equivalente da
+  tabela acima), abra `.claude/commands/<comando>.md` e siga o arquivo inteiro, com
+  `$ARGUMENTS` = os args. Ignore o frontmatter (`description`, `argument-hint`, `allowed-tools`, `model`).
+- **Sem subagentes:** o `/revisar` deve rodar numa sessão nova (ou com outro modelo), seguindo
+  `.claude/agents/revisor.md` só com leitura, para o review ter contexto limpo. Na mesma sessão
+  que implementou, avise o usuário e não poste o review.
+
+| Agente | Onde lê as regras | Como chamar um comando |
+|---|---|---|
+| Claude Code | `CLAUDE.md` | slash command (`/implementar`) ou a frase da tabela |
+| Codex, opencode, Hermes, Cursor… | `AGENTS.md` → `CLAUDE.md` | pedir "siga `.claude/commands/<x>.md`", ou cadastrar esses arquivos como prompts da ferramenta |
 
 ## Planejamento em duas etapas
 
@@ -101,6 +120,8 @@ usa `gh project` e só roda onde o board é acessível.
 | Conferir Head e prints (o check `pr-gate` roda) | `GITHUB_EVENT_PATH=<evento.json> ./scripts/pr-gate.sh` |
 | Configurar um projeto novo (uma vez, só local, pelo usuário) | `./scripts/bootstrap.sh` |
 | Publicar este template (só no repo do template) | `./scripts/publish-template.sh [nome]` |
+| Escolher a próxima task e conferir a ordem (`/implementar`) | `./scripts/next-task.sh [<N>]` |
+| Trazer as mudanças do template para um projeto antigo | `./scripts/atualiza-template.sh [--aplicar] [url]` |
 | Rodar os testes dos scripts | `./scripts/test/run.sh` |
 
 ## Issues
@@ -117,6 +138,11 @@ usa `gh project` e só roda onde o board é acessível.
   em qual milestone entra. No milestone em andamento: ACs na spec + issue + linha no roadmap na
   posição indicada (`--after`). Num milestone futuro: só o escopo (`F#`) na seção Milestones do
   roadmap; a issue nasce no `/planejar M<n>` dele.
+- Hotfix com uma task em andamento: só quando o usuário passa a issue (`/implementar <N>`) e outra
+  está `doing`. Pare e confirme; guarde a task atual num commit `wip:` local (sem push); a linha do
+  hotfix vai para logo depois da última `done` (`new-issue.sh --existing <N> --after <última done>`).
+  Depois do `/fechar` do hotfix, `/implementar` retoma a task interrompida (passos em
+  `.claude/commands/implementar.md`).
 - Bug reportado numa issue `type:bug`: se for da task em andamento, corrija nela (`/corrigir`);
   senão, ponha a issue no roadmap (`./scripts/new-issue.sh --existing <N>`) e pergunte onde entra.
 - Issue "fila" (opcional): uma issue `type:chore` que lista trabalho que depende de algo que não
@@ -130,5 +156,5 @@ usa `gh project` e só roda onde o board é acessível.
 - Mudou comportamento? Atualize a spec no mesmo commit.
 - Versão do PRD é uma git tag `prd-vX.Y`; nunca escreva sha ou versão no texto dos docs.
 - Nunca dê push na `main`.
-- Este arquivo também é lido como `AGENTS.md` (link simbólico) por outras ferramentas; os
-  comandos de `.claude/` são só do Claude Code.
+- Outras ferramentas leem o `AGENTS.md`, que manda seguir este arquivo e os comandos de
+  `.claude/` (veja "Em outros agentes").

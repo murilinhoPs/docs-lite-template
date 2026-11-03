@@ -41,7 +41,7 @@ Rodar tudo: `./scripts/test/run.sh` (precisa de `bash`, `git`, `jq`, `yq` e `pyt
 | CA-D4 | Nada cita a label de doing, o token, o workflow de sync, nem `review` como status do roadmap | run: "nada cita a label, o token nem o workflow de sync removidos (CA-D4)", "roadmap só com todo, doing e done (CA-D4)" |
 | CA-D4b | Testes de `new-issue`, `open-pr`, `task-status` passando com 3 status | run: a suíte toda ("status done no roadmap", "review não é status do roadmap") |
 | CA-D5 | Mesmo fluxo em `CLAUDE.md`, comandos, prompt | run: "mesmo fluxo … (CA-E5, CA-G8)" |
-| CA-D6 | `AGENTS.md` é link para o `CLAUDE.md` | run: "AGENTS.md é link simbólico para o CLAUDE.md (CA-D6)", "AGENTS.md é link para o CLAUDE.md num clone novo" |
+| CA-D6 | `AGENTS.md` aponta para o `CLAUDE.md` | run: "AGENTS.md é arquivo normal que manda seguir o CLAUDE.md e os comandos (CA-D6, CA-J5)", "AGENTS.md funciona num clone novo, mesmo com core.symlinks=false". Era um link simbólico até a Parte J, que o trocou por um arquivo normal |
 
 ## Parte E (`/preparar`)
 
@@ -81,6 +81,17 @@ Rodar tudo: `./scripts/test/run.sh` (precisa de `bash`, `git`, `jq`, `yq` e `pyt
 | CA-I2 | `preparar.md` sem "fica anotado" e gravando a seção nas fases 1, 2 e 4 (e a 3 só pergunta se contraditório) | run: "preparar.md sem \"fica anotado\" … (CA-I2)"; manual: `grep -n "fica anotado" .claude/commands/preparar.md` (vazio) |
 | CA-I3 | `planejar.md` lê a seção no modo 1 (ponto de partida, fonte e divergências) e no modo 2 (trabalho a construir), sem alterá-la | run: "planejar.md lê a seção nos dois modos e não a altera (CA-I3)"; manual: `grep -n "Para o /planejar" .claude/commands/planejar.md` |
 | CA-I4 | `CLAUDE.md`, READMEs e esta matriz atualizados; `run.sh` e `smoke.sh` passando | run: "CLAUDE.md, docs/README.md e README citam a passagem pela seção (CA-I4)" e a suíte toda |
+
+## Parte J (operação dentro do repo)
+
+| CA | O que | Cobertura |
+|---|---|---|
+| CA-J1 | README "Quando algo dá errado" com as linhas de J1; cada mensagem citada existe no código | run: "README: seção Quando algo dá errado, logo depois do Merge gate", "cada mensagem citada na tabela existe em scripts/, .claude/ ou .github/", "a tabela tem as linhas mínimas de J1" |
+| CA-J2 | Hotfix com parada de confirmação, `wip:` local, posição no roadmap e retomada; a checagem da task anterior cobre a retomada | run: seção "hotfix e retomada (CA-J2)" (fixture de roadmap + `gh` simulado com `next-task.sh`, `new-issue.sh --existing --after`, `task-status.sh`) |
+| CA-J3 | README com as três listas; `atualiza-template.sh` sem `--aplicar` não muda nada, com `--aplicar` não toca nos protegidos, recusa `main` e árvore suja | run: seção "atualiza-template.sh (CA-J3)" (template e projeto locais, sem rede) |
+| CA-J4 | `CLAUDE.md` e README dizem qual fonte manda | run: "CLAUDE.md e README dizem qual fonte manda (CA-J4)" |
+| CA-J5 | "Em outros agentes" no `CLAUDE.md`; `AGENTS.md` arquivo normal; exemplo de ponta a ponta no `docs/README.md` | run: "CLAUDE.md: Em outros agentes … (CA-J5)", "AGENTS.md é arquivo normal …", "docs/README: exemplo de ponta a ponta com os formatos reais" |
+| CA-J6 | `CA.md`, tabela de scripts do `CLAUDE.md` e README atualizados; `run.sh` e `smoke.sh` passando | run: "todo script de scripts/ está na tabela do CLAUDE.md …" (cobre `next-task.sh` e `atualiza-template.sh`) e a suíte toda |
 
 ## Parte H (fechamento)
 

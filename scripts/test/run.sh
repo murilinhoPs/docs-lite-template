@@ -399,7 +399,8 @@ check "nada cita a label, o token nem o workflow de sync removidos (CA-D4)" \
   bash -c '! grep -rnE "$0" --exclude-dir=.git .' "status"":doing|PROJECT""_TOKEN|sync-board""\.yml"
 check "roadmap só com todo, doing e done (CA-D4)" \
   bash -c 'grep -q "^Status das issues: \`todo\` · \`doing\` · \`done\`" docs/roadmap.md && ! grep -qE "\| (review) \|" docs/roadmap.md'
-check "AGENTS.md é link simbólico para o CLAUDE.md (CA-D6)" test "$(readlink AGENTS.md)" = CLAUDE.md
+check "AGENTS.md é arquivo normal que manda seguir o CLAUDE.md e os comandos (CA-D6, CA-J5)" \
+  bash -c 'test -f AGENTS.md && test ! -L AGENTS.md && grep -q "CLAUDE.md" AGENTS.md && grep -q ".claude/commands/<comando>.md" AGENTS.md && grep -q "Em outros agentes" AGENTS.md'
 P=docs/preparo.md
 check "preparo.md: frontmatter updated e fase (CA-E1)" \
   bash -c 'sed -n "1,4p" "$0" | grep -q "^updated: " && sed -n "1,4p" "$0" | grep -qE "^fase: (inventario|entrevista|pronto)"' "$P"
@@ -474,6 +475,99 @@ check "planejar.md lê a seção nos dois modos e não a altera (CA-I3)" \
 check "CLAUDE.md, docs/README.md e README citam a passagem pela seção (CA-I4)" \
   bash -c 'for f in CLAUDE.md docs/README.md README.md; do grep -q "\"Para o /planejar\"" "$f" || { echo "$f"; exit 1; }; done'
 
+echo "quando algo dá errado (CA-J1)"
+check "README: seção Quando algo dá errado, logo depois do Merge gate" \
+  bash -c 'grep "^## " README.md | grep -A1 -x "## Merge gate" | tail -1 | grep -qx "## Quando algo dá errado"'
+check "cada mensagem citada na tabela existe em scripts/, .claude/ ou .github/" \
+  bash -c 'awk "/^## Quando algo dá errado/ { s = 1; next } /^## / { s = 0 } s && /^\| [^-S]/" README.md | cut -d"|" -f2 | grep -oE "\`[^\`]+\`" | tr -d "\`" | grep -vxE "pr-gate|open-pr.sh|merge.sh|sync-board.sh|new-issue.sh|ci|/implementar|/planejar M<n>|main|CONFLICT" | while read -r m; do grep -rqF -- "$m" scripts .claude .github || { echo "$m"; exit 1; }; done'
+check "a tabela tem as linhas mínimas de J1" \
+  bash -c 's="$(awk "/^## Quando algo dá errado/ { s = 1; next } /^## / { s = 0 } s" README.md)"; for k in "Head do corpo desatualizado" "e o código mudou até o head" "branch atrás da" "conflito no rebase" "Head branch was modified" "escreva o AC na spec" "ainda está aberta" "só planejo o milestone" "gh sem acesso ao Projects" "Sem scripts/board.conf" "card no lugar errado" "configure os testes da stack"; do grep -qF "$k" <<<"$s" || { echo "$k"; exit 1; }; done'
+
+echo "hotfix e retomada (CA-J2)"
+setup hotfix
+cat > "$R" <<'MD'
+## Milestones
+
+### M1 — MVP
+- **Objetivo:** x
+
+## Issues por milestone
+
+### M1 — MVP
+
+| Ordem | Issue | Título | Status | Spec | PR |
+|---|---|---|---|---|---|
+| 1 | #1 | [feat] Um | done | — | #4 |
+| 2 | #2 | [feat] Dois | doing | — | |
+| 3 | #3 | [feat] Três | todo | — | |
+MD
+ms='{"number":4,"title":"M1 — MVP"}'
+jq -n --argjson ms "$ms" '[{number:1,state:"closed"},{number:2,state:"open"},{number:3,state:"open"},{number:9,title:"[bug] Hotfix",body:"",state:"open"}] | map(. + {milestone:$ms, labels:[]})' > "$GH_STATE/issues.json"
+check "sem argumento: retoma a task doing (anterior fechada)" test "$(./scripts/next-task.sh 2>/dev/null)" = 2
+o="$(./scripts/next-task.sh 9 2>&1 >/dev/null; echo "rc=$?")"
+check "/implementar <N> com outra task doing: pede confirmação (sai com 2)" \
+  bash -c 'grep -q "A task #2 está em andamento; faço o hotfix #9 antes?" <<<"$0" && grep -q "rc=2" <<<"$0"' "$o"
+./scripts/new-issue.sh --existing 9 --after 1 >/dev/null
+./scripts/task-status.sh 9 doing >/dev/null
+check "a linha do hotfix vai logo depois da última done, e a interrompida continua doing" \
+  test "$(rows | cut -d'|' -f2,4 | paste -sd ' ')" = "#1|done #9|doing #2|doing #3|todo"
+check "com o hotfix em andamento, /implementar sem argumento pega o hotfix" test "$(./scripts/next-task.sh 2>/dev/null)" = 9
+./scripts/task-status.sh 9 done >/dev/null
+o="$(./scripts/next-task.sh 2>&1; echo "rc=$?")"
+check "retomada bloqueada enquanto o hotfix não fechou" \
+  bash -c 'grep -q "A task anterior (#9) ainda está aberta: falta o merge ou o /fechar." <<<"$0" && grep -q "rc=1" <<<"$0"' "$o"
+jq 'map(if .number == 9 then .state = "closed" else . end)' "$GH_STATE/issues.json" > "$GH_STATE/x" && mv "$GH_STATE/x" "$GH_STATE/issues.json"
+check "depois do /fechar do hotfix, retoma a task interrompida (a anterior agora é o hotfix)" test "$(./scripts/next-task.sh 2>/dev/null)" = 2
+./scripts/new-issue.sh --existing 3 --after 1 >/dev/null
+check "--existing com --after move uma linha que já está no roadmap" \
+  test "$(rows | cut -d'|' -f1,2 | paste -sd ' ')" = "1|#1 2|#3 3|#9 4|#2"
+check "next-task.sh só usa rotas do repo" only_repo_routes
+check "CLAUDE.md e implementar.md descrevem o hotfix (confirmação, wip local, posição, retomada)" \
+  bash -c 'grep -q "Hotfix com uma task em andamento" CLAUDE.md && f=.claude/commands/implementar.md && grep -q "Pare e confirme" "$f" && grep -q "wip: <resumo>" "$f" && grep -q "sem push" "$f" && grep -q -- "--existing <N> --after <última done>" "$f" && grep -q "Retomada" "$f"'
+
+echo "atualiza-template.sh (CA-J3)"
+TPL="$WORK/tpl" PRJ="$WORK/prj"
+# Cópia da working tree (com o que ainda não tem commit) num repo novo. tree_repo <dir>
+tree_repo() {
+  mkdir -p "$1" && git -C "$SRC" ls-files -co --exclude-standard -z | (cd "$SRC" && xargs -0 cp -P --parents -t "$1")
+  (cd "$1" && git init -q -b main && git config user.email t@t && git config user.name t && git config commit.gpgsign false \
+    && git add -A && git commit -qm base)
+}
+tree_repo "$TPL" && (cd "$TPL" && echo "# novo no template" >> scripts/merge.sh && echo "regra nova" >> CLAUDE.md \
+  && echo "texto novo" >> docs/README.md && echo "# ci do template" >> .github/workflows/ci.yml \
+  && echo "OWNER=template" > scripts/board.conf && echo "prd do template" >> docs/prd.md \
+  && git add -A && git commit -qm "template evolui")
+tree_repo "$PRJ" && cd "$PRJ"
+printf 'OWNER=acme\nPROJECT_NUMBER=7\n' > scripts/board.conf && echo "# ci do projeto" >> .github/workflows/ci.yml \
+  && echo "prd do projeto" >> docs/prd.md && git add -A && git commit -qm "projeto"
+check "recusa rodar na main" bash -c '! ./scripts/atualiza-template.sh "$0"' "$TPL"
+git switch -qc chore/atualiza-template
+echo sujo >> README.md
+check "recusa a árvore suja" bash -c '! ./scripts/atualiza-template.sh "$0"' "$TPL"
+git checkout -q -- README.md
+before="$(git rev-parse HEAD):$(git status --porcelain | wc -l)"
+o="$(./scripts/atualiza-template.sh "$TPL")"
+check "sem --aplicar: não muda nada" test "$(git rev-parse HEAD):$(git status --porcelain | wc -l)" = "$before"
+check "sem --aplicar: mostra o diff dos inteiros e lista os de mesclar à mão" \
+  bash -c 'grep -q "scripts/merge.sh" <<<"$0" && grep -q "CLAUDE.md" <<<"$0" && grep -q "  docs/README.md" <<<"$0" && ! grep -q "ci.yml" <<<"$0" && ! grep -q "board.conf" <<<"$0"' "$o"
+./scripts/atualiza-template.sh --aplicar "$TPL" >/dev/null
+check "com --aplicar: traz os inteiros (scripts, CLAUDE.md)" \
+  bash -c 'tail -1 scripts/merge.sh | grep -q "novo no template" && tail -1 CLAUDE.md | grep -qx "regra nova"'
+check "com --aplicar: não toca nos protegidos (board.conf, ci.yml, prd.md, docs/README.md)" \
+  bash -c 'grep -q "OWNER=acme" scripts/board.conf && tail -1 .github/workflows/ci.yml | grep -q "ci do projeto" && tail -1 docs/prd.md | grep -q "prd do projeto" && ! grep -q "texto novo" docs/README.md'
+check "com --aplicar: não faz commit" test "$(git log -1 --format=%s)" = projeto
+cd "$SRC"
+check "README: Atualizar a partir do template, com as três listas (CA-J3)" \
+  bash -c 's="$(awk "/^## Atualizar a partir do template/ { s = 1; next } /^## / { s = 0 } s" README.md)"; grep -q "Pode trazer inteiro" <<<"$s" && grep -q "Mesclar à mão" <<<"$s" && grep -q "Nunca sobrescrever" <<<"$s" && grep -q "atualiza-template.sh --aplicar" <<<"$s"'
+
+echo "qual fonte manda e outros agentes (CA-J4, CA-J5)"
+check "CLAUDE.md e README dizem qual fonte manda (CA-J4)" \
+  bash -c 'sed -n 1,5p CLAUDE.md | grep -q "são a fonte do processo" && grep -q "se divergirem, vale o que está aqui" CLAUDE.md && grep -q "Qual fonte manda" README.md'
+check "CLAUDE.md: Em outros agentes, logo depois de Fases → comandos, com a regra dos comandos e a do /revisar (CA-J5)" \
+  bash -c 'grep "^## " CLAUDE.md | grep -A1 -x "## Fases → comandos" | tail -1 | grep -qx "## Em outros agentes" && grep -q "abra \`.claude/commands/<comando>.md\` e siga o arquivo inteiro" CLAUDE.md && grep -q "Na mesma sessão" CLAUDE.md && grep -q "não poste o review" CLAUDE.md'
+check "docs/README: exemplo de ponta a ponta com os formatos reais" \
+  bash -c 'f=docs/README.md; grep -q "^## Exemplo de ponta a ponta" "$f" && grep -qF "| F1 | Login com e-mail | Must |" "$f" && grep -q "AC-F1-02" "$f" && grep -q "\[feat\] Login com e-mail" "$f" && grep -qx "## Como verificar" "$f" && grep -qF "| 2 | #12 | [feat] Login com e-mail | todo | specs/login.md | |" "$f" && grep -qx "Closes #12" "$f" && grep -q "^\*\*Head:\*\*" "$f" && grep -q "0 bloqueantes, 1 deveria, 1 nit" "$f" && grep -q "prio:baixa" "$f"'
+
 echo "consistência (CA-H1, CA-H2)"
 cd "$SRC"
 check "todo ./scripts/X citado no CLAUDE.md, READMEs e comandos existe e é executável" \
@@ -484,8 +578,8 @@ check "os 8 comandos citados existem em .claude/commands, e o revisor em .claude
   bash -c 'for c in preparar planejar implementar qa abrir-pr revisar corrigir fechar; do [ -f ".claude/commands/$c.md" ] && grep -q "/$c" CLAUDE.md || { echo "$c"; exit 1; }; done; [ -f .claude/agents/revisor.md ] && test "$(ls .claude/commands | wc -l)" = 8'
 check "frases-atalho apontam para os comandos certos" \
   bash -c 'grep -qE "^\| .*\`/preparar.*\"importe meus docs\"" CLAUDE.md && grep -qE "^\| .*\`/implementar.*\"próxima task\"" CLAUDE.md && grep -qE "^\| .*\`/abrir-pr.*\"pode abrir o PR\"" CLAUDE.md && grep -qE "^\| .*\`/revisar.*\"revise o PR\"" CLAUDE.md'
-check "AGENTS.md é link para o CLAUDE.md num clone novo" \
-  bash -c 'git clone -q "$0" "$1/clone" && cd "$1/clone" && test -L AGENTS.md && test "$(readlink AGENTS.md)" = CLAUDE.md && cmp -s AGENTS.md CLAUDE.md' "$SRC" "$WORK"
+check "AGENTS.md funciona num clone novo, mesmo com core.symlinks=false" \
+  bash -c 'git clone -q -c core.symlinks=false "$0" "$1/clone" && cd "$1/clone" && test -f AGENTS.md && grep -q "CLAUDE.md" AGENTS.md && test -f CLAUDE.md' "$SRC" "$WORK"
 check "placeholders no mesmo estilo (<N>, <pr>, <head>, <sha7>, M<n>, <ms>)" \
   bash -c '! grep -rnE "#<issue>|--after <issue>|(^|[^N])NNN-<|milestones/<n>|<sha>[^7]" CLAUDE.md README.md docs .claude .github scripts/*.sh'
 check "bash -n em todos os scripts" bash -c 'for f in scripts/*.sh scripts/test/*.sh scripts/test/bin/gh; do bash -n "$f" || exit 1; done'

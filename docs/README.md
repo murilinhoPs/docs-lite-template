@@ -51,3 +51,95 @@ comportamento atualiza a spec no mesmo PR.
 - Imagem oficial vai em `docs/assets/`; print de teste vai na branch `pr-assets`
   (`issue-<N>/<sha7>/`).
 - Diagrama é Mermaid; imagem só para tela real ou referência visual.
+
+## Exemplo de ponta a ponta
+
+O mesmo critério de aceite atravessando o processo. Os formatos são os dos templates do repo.
+
+**1. PRD** (`docs/prd.md`, tabela Features):
+
+```markdown
+| ID | Feature | Prioridade | Spec | Área |
+|---|---|---|---|---|
+| F1 | Login com e-mail | Must | [specs/login.md](specs/login.md) | area:auth |
+```
+
+**2. Spec** (`docs/specs/login.md`, seção "Critérios de aceite vigentes"):
+
+```markdown
+- AC-F1-01: com e-mail e senha válidos, o usuário entra e vê a tela inicial
+- AC-F1-02: com a senha errada, aparece "E-mail ou senha incorretos" e o campo de senha é limpo
+```
+
+**3. Issue** (`/planejar M1`, corpo no formato de `docs/prompts/issue-feature.md`), título
+`[feat] Login com e-mail`, labels `type:feature,area:auth`, milestone `M1 — MVP`:
+
+```markdown
+**Spec:** docs/specs/login.md  (F1)
+**Milestone:** docs/milestones/m1.md
+**Área:** area:auth
+
+## Critérios de aceite
+- [ ] AC-F1-01: com e-mail e senha válidos, o usuário entra e vê a tela inicial
+- [ ] AC-F1-02: com a senha errada, aparece "E-mail ou senha incorretos" e o campo de senha é limpo
+
+## Como verificar
+- Teste automatizado: login válido e senha errada
+- Fluxo manual: abrir /login, errar a senha, conferir a mensagem
+- Plataformas: web 1280×800
+- Precisa de print: sim (→ `type:design`) / não
+```
+
+**4. Roadmap** (`docs/roadmap.md`, seção "Issues por milestone", linha criada pelo `new-issue.sh`):
+
+```markdown
+### M1 — MVP
+
+| Ordem | Issue | Título | Status | Spec | PR |
+|---|---|---|---|---|---|
+| 2 | #12 | [feat] Login com e-mail | todo | specs/login.md | |
+```
+
+**5. PR** (`/abrir-pr`, corpo pelo `.github/pull_request_template.md`):
+
+```markdown
+Closes #12
+
+**Spec:** docs/specs/login.md (não muda comportamento)
+**Head:** <sha de 40 caracteres>
+**Tipo:** código
+
+## Critérios de aceite
+- [ ] AC-F1-01: …
+- [ ] AC-F1-02: …
+
+## Testes
+(saída real dos testes)
+`git rev-parse --short HEAD`: <sha7>
+
+## Prints
+[pr-assets/issue-12/<sha7>/](…)
+```
+
+A linha do roadmap já vai `done` nesse PR, e o número do PR entra na coluna PR.
+
+**6. Review** (`/revisar`, subagente `revisor`, postado com `event=COMMENT` travado no head):
+
+```markdown
+## Bloqueante
+(nenhum)
+
+## Deveria
+- src/login.ts:42 — a mensagem de erro está fixa no código; deveria vir do arquivo de textos.
+
+## Nit
+- src/login.ts:10 — import não usado.
+
+Recomendação: pode fazer o merge (0 bloqueantes, 1 deveria, 1 nit).
+```
+
+**7. Merge e `/fechar`:** você roda `./scripts/merge.sh <pr> <head>`. O `/fechar` confere que a
+issue #12 fechou, sincroniza o board (o card vai para `done`) e pergunta quais nits e "deveria"
+viram issue. O "deveria" aprovado vira `[chore] Textos de erro do login no arquivo de textos`,
+com `prio:baixa` e sem linha no roadmap; o próximo `/planejar M<n>` decide onde ele entra.
+
