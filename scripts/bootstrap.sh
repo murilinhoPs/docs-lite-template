@@ -7,9 +7,22 @@
 # configurações de merge/proteção.
 # Pode ser rodado de novo: pula o que já existe.
 #
-# Uso: ./scripts/bootstrap.sh
-# Para o board: gh auth refresh -s project
+# Uso: ./scripts/bootstrap.sh [--sem-board]
+#   --sem-board (ou BOARD=nao ./scripts/bootstrap.sh): não cria o board do Projects
+#     nem chama gh project; grava BOARD=nao em scripts/board.conf. O resto é igual.
+# Para o board: gh auth refresh -s project (não precisa com --sem-board)
 set -euo pipefail
+
+USO="Uso: ./scripts/bootstrap.sh [--sem-board]"
+SEM_BOARD=0
+[ "${BOARD:-}" = nao ] && SEM_BOARD=1
+for a in "$@"; do
+  case "$a" in
+    --sem-board) SEM_BOARD=1 ;;
+    -h|--help) echo "$USO"; exit 0 ;;
+    *) echo "Argumento desconhecido: $a" >&2; echo "$USO" >&2; exit 1 ;;
+  esac
+done
 
 # shellcheck source=scripts/lib.sh
 source "$(dirname "$0")/lib.sh"
@@ -77,7 +90,20 @@ fi
 BOARD_TEMPLATE="${BOARD_TEMPLATE-murilinhoPs/2}"
 CONF="scripts/board.conf"
 OWNER="${REPO%%/*}"
-if [ -f "$CONF" ]; then
+conf_get() { [ -f "$CONF" ] && sed -n "s/^$1=//p" "$CONF" | head -n1; true; }
+CONF_BOARD="$(conf_get BOARD)"
+CONF_NUM="$(conf_get PROJECT_NUMBER)"
+if [ "$SEM_BOARD" = 1 ] && [ -n "$CONF_NUM" ]; then
+  echo "  aviso: este projeto já tem board (#$CONF_NUM); para removê-lo apague scripts/board.conf à mão"
+elif [ "$SEM_BOARD" = 1 ] && [ "$CONF_BOARD" = nao ]; then
+  echo "  board: nada a fazer, o projeto já está sem board (BOARD=nao em $CONF)"
+elif [ "$SEM_BOARD" = 1 ]; then
+  echo "BOARD=nao" > "$CONF"
+  echo "  board: pulado (--sem-board); o andamento fica no roadmap, nos milestones e nas issues"
+  echo "  BOARD=nao salvo em $CONF (faça commit desse arquivo)"
+elif [ "$CONF_BOARD" = nao ]; then
+  echo "  aviso: projeto configurado sem board; para criar um, apague scripts/board.conf e rode de novo"
+elif [ -f "$CONF" ]; then
   echo "  board já configurado ($CONF)"
 elif ! gh project list --owner "$OWNER" --limit 1 >/dev/null 2>&1; then
   echo "  aviso: board não criado. Rode 'gh auth refresh -s project' e depois este script de novo."

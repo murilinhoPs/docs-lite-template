@@ -83,6 +83,8 @@ O `AGENTS.md` aponta para este arquivo. Para agentes sem os recursos do Claude C
   Nunca mova cards à mão: o próximo sync desfaz.
 - O sync usa `gh project`, então só roda onde o board é acessível (Claude Code local). Os
   comandos rodam `./scripts/sync-board.sh --auto`: sem acesso, ele avisa e segue.
+- Se `scripts/board.conf` tem `BOARD=nao`, não existe board: não tente criá-lo nem sincronizá-lo
+  (o sync diz "nada a sincronizar" e segue). Veja "Board → Sem board" no `README.md`.
 
 ## Merge gate
 

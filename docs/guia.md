@@ -64,7 +64,7 @@ local e na nuvem. A exceção é o `sync-board.sh`, que usa `gh project`.
 
 | Script | O que faz |
 |---|---|
-| `bootstrap.sh` | Só local, uma vez por projeto: cria o milestone M0 e a issue de setup, as labels, o board (cópia do projeto modelo, com `Etapa` e `Ordem`), a branch `pr-assets`, a configuração do squash e o ruleset da `main` com os checks obrigatórios. |
+| `bootstrap.sh` | Só local, uma vez por projeto: cria o milestone M0 e a issue de setup, as labels, o board (cópia do projeto modelo, com `Etapa` e `Ordem`), a branch `pr-assets`, a configuração do squash e o ruleset da `main` com os checks obrigatórios. Com `--sem-board`, pula o board e grava `BOARD=nao`. |
 | `new-milestone.sh "M<n> — <nome>"` | Cria o milestone, sem duplicar. |
 | `new-issue.sh` | Cria a issue e a linha `todo` no roadmap; `--existing <N>` põe no roadmap uma issue que já existe, e `--after` também move a linha. |
 | `next-task.sh [<N>]` | Escolhe a task, confere a ordem e detecta o hotfix. |
@@ -92,6 +92,9 @@ local e na nuvem. A exceção é o `sync-board.sh`, que usa `gh project`.
   `| Ordem | Issue | Título | Status | Spec | PR |`).
 - O roadmap guarda o destino de cada linha (`todo`, `doing`, `done`): o `/abrir-pr` já marca
   `done`, então nenhuma task precisa de um segundo PR. O board mostra o andamento real, lido do GitHub.
+- O board é opcional: `./scripts/bootstrap.sh --sem-board` grava `BOARD=nao` e o sync diz "nada a
+  sincronizar". Sem board, o andamento fica no roadmap, nos milestones e nas issues (veja "Board →
+  Sem board" no `README.md`).
 - Nunca existem issues, nem milestone no GitHub, de milestones futuros.
 - O fim de um milestone não precisa de PR próprio: o `/fechar` guarda o encerramento no milestone
   do GitHub, e o PR do próximo `/planejar M<n+1>` o registra nos docs.

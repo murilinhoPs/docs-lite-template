@@ -6,8 +6,15 @@
 # → sync-board (Etapa calculada) → merge → fechar o milestone (encerramento guardado
 # nele, como o /fechar faz) → pré-condição do /planejar M1.
 #
-# Uso: ./scripts/test/smoke.sh   (o ./scripts/test/run.sh também roda este)
+# Uso: ./scripts/test/smoke.sh [--sem-board]   (o ./scripts/test/run.sh roda os dois)
+#   --sem-board: o mesmo fluxo com ./scripts/bootstrap.sh --sem-board; o sync não chama o gh.
 set -euo pipefail
+SEM_BOARD=0
+case "${1:-}" in
+  --sem-board) SEM_BOARD=1 ;;
+  "") ;;
+  *) echo "Uso: ./scripts/test/smoke.sh [--sem-board]" >&2; exit 1 ;;
+esac
 
 # shellcheck source=scripts/test/helpers.sh
 source "$(dirname "$0")/helpers.sh"
@@ -16,16 +23,22 @@ R=docs/roadmap.md
 M0="M0 — Fundação e spike"
 step() { echo "$1"; }
 
-setup smoke
+setup "smoke$([ "$SEM_BOARD" = 1 ] && echo -sem-board)"
 export GH_LOCAL=1
 echo '[]' > "$GH_STATE/milestones.json"
 sed -i 's/| F1 | <nome> | Must | \[specs\/<feature>.md\](specs\/<feature>.md) | area:<x> |/| F1 | Login | Must | [specs\/auth.md](specs\/auth.md) | area:auth |/' docs/prd.md
 
 step "1. bootstrap: só o M0 e a issue de setup"
-./scripts/bootstrap.sh > "$GH_STATE/boot.out" 2>&1 || { ko "bootstrap"; sed 's/^/    /' "$GH_STATE/boot.out"; }
+BOOT_ARGS=(); [ "$SEM_BOARD" = 1 ] && BOOT_ARGS=(--sem-board)
+./scripts/bootstrap.sh "${BOOT_ARGS[@]}" > "$GH_STATE/boot.out" 2>&1 || { ko "bootstrap"; sed 's/^/    /' "$GH_STATE/boot.out"; }
 check "só o milestone M0 no GitHub" test "$(jq -c '[.[].title]' "$GH_STATE/milestones.json")" = "[\"$M0\"]"
 check "issue de setup #1 na seção Issues por milestone, todo" test "$(section "$M0")" = "1|#1|[chore] Setup do projeto|todo|—|"
-check "board copiado do modelo e board.conf gravado" test -s scripts/board.conf
+if [ "$SEM_BOARD" = 1 ]; then
+  check "sem board: board.conf = BOARD=nao e nenhuma chamada gh project" \
+    test "$(cat scripts/board.conf):$(count '^gh project')" = "BOARD=nao:0"
+else
+  check "board copiado do modelo e board.conf gravado" test -s scripts/board.conf
+fi
 git add -A && git commit -qm "bootstrap" && git push -q
 
 step "2. /planejar (visão geral): roadmap geral válido"
@@ -94,12 +107,18 @@ prints "$(git rev-parse HEAD)"
 ./scripts/open-pr.sh --update "$PR" > /dev/null 2>&1
 check "verde de novo com prints do head novo" gate
 
+SEM_SYNC="Sem board (BOARD=nao em scripts/board.conf): nada a sincronizar."
 step "7. sync-board: Etapa calculada"
 : > "$GH_LOG"
+if [ "$SEM_BOARD" = 1 ]; then
+  check "sem board: nada a sincronizar, sem chamar o gh" \
+    bash -c 'test "$(./scripts/sync-board.sh --auto)" = "$0" && test ! -s "$1"' "$SEM_SYNC" "$GH_LOG"
+else
 ./scripts/sync-board.sh > /dev/null
 etapa() { grep -q "id PVTI_$1 --field-id F_ETAPA --single-select-option-id O_$2" "$GH_LOG"; }
 check "setup sem PR → todo" etapa 1 todo
 check "issue com PR aberto → review" etapa "$N" review
+fi
 
 step "8. merge travado no head e /fechar"
 check "merge.sh com o head atual" ./scripts/merge.sh "$PR" "$(git rev-parse HEAD)"
@@ -108,8 +127,13 @@ jq --argjson p "$PR" 'map(if .number == $p then .state = "closed" | .merged_at =
   "$GH_STATE/pulls.json" > "$GH_STATE/x" && mv "$GH_STATE/x" "$GH_STATE/pulls.json"
 jq 'map(.state = "closed")' "$GH_STATE/issues.json" > "$GH_STATE/x" && mv "$GH_STATE/x" "$GH_STATE/issues.json"
 : > "$GH_LOG"
+if [ "$SEM_BOARD" = 1 ]; then
+  check "sem board: o sync do /fechar também não chama o gh" \
+    bash -c 'test "$(./scripts/sync-board.sh)" = "$0" && test ! -s "$1"' "$SEM_SYNC" "$GH_LOG"
+else
 ./scripts/sync-board.sh > /dev/null
 check "issues fechadas → done no board" bash -c 'grep -q "id PVTI_1 --field-id F_ETAPA --single-select-option-id O_done" "$0" && grep -q "id PVTI_$1 --field-id F_ETAPA --single-select-option-id O_done" "$0"' "$GH_LOG" "$N"
+fi
 MS="$(jq -r '.[0].milestone.number' "$GH_STATE/issues.json")"
 check "milestone sem issues abertas (fim de milestone)" test "$(gh api "repos/acme/proj/milestones/$MS" -q .open_issues)" = 0
 printf 'Encerrado em 2026-01-02.\nCritério de saída: confirmado — login de ponta a ponta\ngo/no-go: go — o spike provou o login\n' > "$GH_STATE/enc.md"
@@ -117,9 +141,10 @@ gh api -X PATCH "repos/acme/proj/milestones/$MS" -f state=closed -F "description
 desc="$(gh api "repos/acme/proj/milestones?state=closed" -q '.[] | select(.title | startswith("M0 ")) | .description')"
 check "pré-condição do /planejar M1: M0 fechado, critério confirmado e go" \
   bash -c 'grep -q "Critério de saída: confirmado" <<<"$0" && grep -q "go/no-go: go" <<<"$0"' "$desc"
+[ "$SEM_BOARD" = 1 ] && check "sem board: nenhuma chamada gh project no fluxo" test "$(count '^gh project')" = 0
 check "o fluxo todo só usou rotas repos/acme/proj na API" \
   bash -c '! grep "^API " "$0" | grep -qv "^API [A-Z]* repos/acme/proj\(/\|$\)"' "$GH_LOG"
 
 echo
-echo "fumaça: $pass ok, $fail falha(s)"
+echo "fumaça$([ "$SEM_BOARD" = 1 ] && echo " --sem-board"): $pass ok, $fail falha(s)"
 [ "$fail" = 0 ]

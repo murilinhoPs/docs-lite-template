@@ -44,6 +44,8 @@ comportamento atualiza a spec no mesmo PR.
 - `roadmap.md` guarda o destino de cada issue (`todo`, `doing`, `done`). O board espelha o roadmap
   e o andamento no GitHub (issue fechada → `done`, PR aberto → `review`), pelo
   `./scripts/sync-board.sh`, que roda onde o board é acessível. Nunca mova cards à mão.
+  O board é opcional: `./scripts/bootstrap.sh --sem-board` grava `BOARD=nao` no `scripts/board.conf`
+  (veja "Board → Sem board" no [README](../README.md)).
 - Cada fase do trabalho tem um comando em `.claude/commands/` (veja o `CLAUDE.md`).
 - Só uma issue em `doing` por vez.
 - Merge só com os checks `ci` e `pr-gate` verdes no head e a branch atualizada com a `main`.

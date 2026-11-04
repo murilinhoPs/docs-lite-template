@@ -18,6 +18,7 @@
 #
 # Uso: ./scripts/sync-board.sh [--auto]
 #   --auto: sem board.conf ou sem acesso ao Projects, avisa e sai sem erro.
+# Com BOARD=nao no board.conf (bootstrap --sem-board), não há board: sai com 0 sem chamar o gh.
 # Requer: gh com escopo "project" (gh auth refresh -s project) e jq.
 set -euo pipefail
 
@@ -35,6 +36,10 @@ if [ ! -f "$CONF" ]; then
   [ "$AUTO" = 1 ] && { echo "Sem scripts/board.conf: $SKIP (depois do ./scripts/bootstrap.sh)."; exit 0; }
   echo "Sem scripts/board.conf: rode ./scripts/bootstrap.sh primeiro."
   exit 1
+fi
+if grep -qx 'BOARD=nao' "$CONF"; then
+  echo "Sem board (BOARD=nao em scripts/board.conf): nada a sincronizar."
+  exit 0
 fi
 # shellcheck source=/dev/null
 source "$CONF"   # define OWNER e PROJECT_NUMBER

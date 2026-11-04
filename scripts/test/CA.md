@@ -116,6 +116,16 @@ Os comandos são prompts: estes CA conferem o texto do `preparar.md` (também au
 | CA-L4 | O `revisor` aceita número de PR ou `local`, mantém `event=COMMENT` no modo PR e nunca aprova nem pede mudanças | run: "… (CA-L4)" |
 | CA-L5 | `CLAUDE.md`, `README.md`, `docs/README.md` e `docs/guia.md` mostram o mesmo ciclo com `/revisar local` (opcional); "Quando algo dá errado" tem as linhas novas; suíte passa | run: "… (CA-L5)" e a suíte toda; manual: `grep -n "revisar local" CLAUDE.md README.md docs/README.md docs/guia.md` |
 
+## Parte M (bootstrap sem board)
+
+| CA | O que | Cobertura |
+|---|---|---|
+| CA-M1 | `bootstrap.sh --sem-board` (e `BOARD=nao`) pula o board por inteiro e grava `BOARD=nao`; os cinco casos da tabela de M1; o resto do bootstrap igual; argumento desconhecido → erro com o uso | run: "bootstrap.sh --sem-board (CA-M1)" |
+| CA-M2 | `sync-board.sh` com `BOARD=nao` sai 0, com a mensagem certa e sem chamar o `gh`, com e sem `--auto`; `task-status.sh` segue | run: "sync-board.sh com BOARD=nao (CA-M2)" |
+| CA-M3 | Nenhum arquivo de `.claude/` mudou nesta parte | manual: `git diff --stat d2d6bb1 -- .claude/` (vazio) |
+| CA-M4 | README ("Board → Sem board" e "Quando algo dá errado"), `docs/guia.md`, `docs/README.md`, `CLAUDE.md` e esta matriz atualizados | run: "… (CA-M4)" |
+| CA-M5 | `run.sh`, `smoke.sh` e `smoke.sh --sem-board` passam | run: "fumaça ponta a ponta, com e sem board (CA-H3, CA-M5)" e a suíte toda |
+
 ## Parte H (fechamento)
 
 | CA | O que | Cobertura |

@@ -96,7 +96,8 @@ linha dela no roadmap, branch `pr-assets`, worktree de prints, squash com títul
 ruleset da `main`. Pode rodar de novo: ele pula o que já existe (rode de novo depois de preencher
 a tabela Features, para criar as `area:*`).
 
-O board é uma cópia do projeto modelo `murilinhoPs/2` (veja "Board → Projeto modelo").
+O board é uma cópia do projeto modelo `murilinhoPs/2` (veja "Board → Projeto modelo"). Para não
+usar board: `./scripts/bootstrap.sh --sem-board` (veja "Board → Sem board").
 
 ## Board
 
@@ -142,6 +143,35 @@ O sync usa `gh project`, então só roda onde o board é acessível (Claude Code
 `gh auth refresh -s project`). Os comandos e o `task-status.sh` chamam `./scripts/sync-board.sh --auto`:
 numa sessão na nuvem ele avisa "board não sincronizado; rode `./scripts/sync-board.sh` localmente"
 e segue. Não há Action nem token para o board.
+
+### Sem board
+
+Use quando você não quer o GitHub Projects, ou não quer liberar o escopo `project` do `gh`. O
+GitHub CLI continua sendo usado normalmente; só o board fica de fora:
+
+```bash
+./scripts/bootstrap.sh --sem-board
+```
+
+(`BOARD=nao ./scripts/bootstrap.sh` faz o mesmo.) Ele pula o passo do board por inteiro: nenhuma
+chamada a `gh project`, nenhuma cópia do modelo, nenhum `gh project link`, e não precisa de
+`gh auth refresh -s project`. Grava `scripts/board.conf` com uma linha só, `BOARD=nao`, que é o
+marcador de que o projeto não usa board (faça commit dele, como do `board.conf` normal). Todo o
+resto é igual: milestone M0, labels, issue de setup e a linha dela no roadmap, `pr-assets` e
+worktree, squash e ruleset. Com `BOARD=nao`, o `sync-board.sh` diz "nada a sincronizar" e sai sem
+erro, então os comandos e o `task-status.sh` seguem normalmente.
+
+Como acompanhar sem board:
+
+- `docs/roadmap.md`: backlog e ordem; a primeira linha `todo` é a próxima task;
+- a página **Milestones** do GitHub: o progresso de cada milestone;
+- o filtro de issues `is:issue milestone:"M1 — <nome>"`: as issues de um milestone;
+- a aba **Pull requests**: PR aberto = task em review.
+
+Para ter o board depois: apague `scripts/board.conf`, rode `gh auth refresh -s project` e
+`./scripts/bootstrap.sh` sem a opção. Se o `board.conf` tem `BOARD=nao`, o bootstrap sem a opção
+não cria o board e avisa; com `--sem-board` num projeto que já tem board, ele avisa e não apaga
+nada.
 
 ## Merge gate
 
@@ -194,6 +224,7 @@ Na coluna Sintoma, o texto entre crases é a mensagem que o script, o check ou o
 | `/planejar M<n>` recusa: `só planejo o milestone que for o próximo` | o milestone anterior não foi encerrado (ou o M0 não teve go) | `/fechar` do anterior; no M0, registrar o go/no-go |
 | `new-issue.sh`: `não existe no repo` (milestone) | o milestone ainda não foi criado no GitHub | `./scripts/new-milestone.sh "M<n> — <nome>"` (no `/planejar M<n>`) |
 | `sync-board.sh`: `gh sem acesso ao Projects` | `gh` sem o escopo `project` (ou sessão na nuvem) | `gh auth refresh -s project` e rodar localmente |
+| `sync-board.sh`: `Sem board (BOARD=nao em scripts/board.conf)` | o projeto foi configurado com `bootstrap.sh --sem-board` | nada: "nada a sincronizar" é esperado, não é erro (veja "Board → Sem board") |
 | `sync-board.sh`: `Sem scripts/board.conf` | o bootstrap não criou o board | `./scripts/bootstrap.sh` de novo, depois de liberar o escopo |
 | `sync-board.sh`: `Campos Etapa/Ordem não encontrados` | o projeto não tem os campos | criar `Etapa` (todo, doing, review, done) e `Ordem` (number) no projeto, ou rodar o bootstrap num projeto novo |
 | card no lugar errado | alguém arrastou à mão, ou o roadmap está diferente | `./scripts/sync-board.sh`; se continuar, corrigir o roadmap |

@@ -290,7 +290,56 @@ boot_fields '{"fields":[{"id":"F_ETAPA","name":"Etapa","options":[{"id":"a","nam
 check "Etapa com opções diferentes: só avisa quais faltam" \
   grep -q 'a Etapa do modelo não tem as opções: doing, review, done. Não alterei' "$GH_STATE/boot.out"
 check "Etapa com opções diferentes: não cria nem altera campo" test "$(count 'project field-create')" = 0
+
+echo "bootstrap.sh --sem-board (CA-M1)"
+setup semboard
+export GH_LOCAL=1
+echo '[]' > "$GH_STATE/milestones.json"
+./scripts/bootstrap.sh --sem-board >"$GH_STATE/b.out" 2>&1 || { ko "bootstrap --sem-board terminou com erro"; sed "s/^/    /" "$GH_STATE/b.out"; }
+check "--sem-board: nenhuma chamada gh project" test "$(count '^gh project')" = 0
+check "--sem-board: board.conf tem só BOARD=nao" test "$(cat scripts/board.conf)" = "BOARD=nao"
+check "--sem-board: imprime o pulo do board" grep -qxF "  board: pulado (--sem-board); o andamento fica no roadmap, nos milestones e nas issues" "$GH_STATE/b.out"
+check "--sem-board: não pede o escopo project" bash -c '! grep -q "auth refresh" "$0"' "$GH_STATE/b.out"
+check "--sem-board: o resto igual (M0, labels, issue de setup, squash, ruleset, pr-assets)" \
+  bash -c 'test "$(jq -c "[.[].title]" "$1/milestones.json")" = "[\"M0 — Fundação e spike\"]" && grep -q "^gh label create type:feature" "$0" && test "$(jq length "$1/issues.json")" = 1 && grep -qF "squash_merge_commit_title" "$0" && test "$(jq length "$1/rulesets.json")" = 1 && git ls-remote --exit-code --heads origin pr-assets >/dev/null && grep -qxF "Pronto. Faça commit de scripts/board.conf e docs/roadmap.md numa branch e abra um PR (a main é protegida)." "$1/b.out"' "$GH_LOG" "$GH_STATE"
+: > "$GH_LOG"
+BOARD=nao ./scripts/bootstrap.sh >"$GH_STATE/b2.out" 2>&1
+check "BOARD=nao equivale a --sem-board (já sem board: nada a fazer)" \
+  test "$(count '^gh project'):$(cat scripts/board.conf):$(grep -c "nada a fazer, o projeto já está sem board" "$GH_STATE/b2.out")" = "0:BOARD=nao:1"
+: > "$GH_LOG"
+./scripts/bootstrap.sh >"$GH_STATE/b3.out" 2>&1
+check "sem a opção e BOARD=nao: não cria o board e avisa" \
+  test "$(count '^gh project'):$(cat scripts/board.conf):$(grep -cxF "  aviso: projeto configurado sem board; para criar um, apague scripts/board.conf e rode de novo" "$GH_STATE/b3.out")" = "0:BOARD=nao:1"
+printf 'OWNER=acme\nPROJECT_NUMBER=7\n' > scripts/board.conf
+: > "$GH_LOG"
+./scripts/bootstrap.sh --sem-board >"$GH_STATE/b4.out" 2>&1
+check "--sem-board com board existente: avisa e não apaga nada" \
+  test "$(grep -cxF "  aviso: este projeto já tem board (#7); para removê-lo apague scripts/board.conf à mão" "$GH_STATE/b4.out"):$(cat scripts/board.conf | paste -sd ' ')" = "1:OWNER=acme PROJECT_NUMBER=7"
+check "--sem-board com board existente: não cria nem copia board" test "$(count '^gh project \(copy\|create\|link\)')" = 0
+rm -f scripts/board.conf
+: > "$GH_LOG"
+./scripts/bootstrap.sh >"$GH_STATE/b5.out" 2>&1
+check "sem a opção e sem board.conf: como antes (copia o modelo)" \
+  test "$(count '^gh project copy 2 --source-owner murilinhoPs'):$(grep -c '^PROJECT_NUMBER=' scripts/board.conf)" = "1:1"
+o="$(./scripts/bootstrap.sh --sem-boar 2>&1; echo "rc=$?")"
+check "argumento desconhecido: erro com o uso" \
+  bash -c 'grep -q "Argumento desconhecido: --sem-boar" <<<"$0" && grep -qF "Uso: ./scripts/bootstrap.sh [--sem-board]" <<<"$0" && grep -q "rc=1" <<<"$0"' "$o"
+check "# Uso: do topo documenta --sem-board e BOARD=nao" \
+  bash -c 'grep -qxF "# Uso: ./scripts/bootstrap.sh [--sem-board]" "$0" && grep -q "^#   --sem-board (ou BOARD=nao ./scripts/bootstrap.sh)" "$0"' scripts/bootstrap.sh
 export GH_LOCAL=0
+
+echo "sync-board.sh com BOARD=nao (CA-M2)"
+echo BOARD=nao > scripts/board.conf
+for a in "" --auto; do
+  : > "$GH_LOG"
+  o="$(./scripts/sync-board.sh $a; echo "rc=$?")"
+  check "BOARD=nao ${a:-sem --auto}: sai 0, nada a sincronizar, sem chamar o gh" \
+    bash -c 'test "$0" = "$(printf "Sem board (BOARD=nao em scripts/board.conf): nada a sincronizar.\nrc=0")" && test ! -s "$1"' "$o" "$GH_LOG"
+done
+: > "$GH_LOG"
+./scripts/task-status.sh 1 doing >/dev/null 2>&1
+check "task-status.sh com BOARD=nao: muda o status e não chama gh project" \
+  test "$(source scripts/lib.sh && roadmap_get "$R" 1 status):$(count 'project')" = "doing:0"
 
 echo "sync-board.sh (D3)"
 setup sync
@@ -655,6 +704,14 @@ check "revisor aceita PR ou local e mantém COMMENT, nunca editar e nunca APPROV
 check "mesmo ciclo com o review local opcional em CLAUDE.md, README, docs/README e guia (CA-L5)" \
   bash -c 'grep -qF "\`/revisar local\` (opcional) → \`/abrir-pr\`" CLAUDE.md && grep -qF "\`/revisar local\` (opcional) → \`/abrir-pr\`" docs/README.md && grep -q "/revisar local (opcional) → /abrir-pr" docs/guia.md && grep -q "\`/revisar local\` revisa a" README.md && grep -q "revise localmente" CLAUDE.md'
 
+echo "sem board nos docs (CA-M4)"
+check "README: Board → Sem board com uso, acompanhamento e volta ao board" \
+  bash -c 'm="$(awk "/^### Sem board/ { s = 1; next } /^##/ { s = 0 } s" README.md)"; for k in "./scripts/bootstrap.sh --sem-board" "BOARD=nao ./scripts/bootstrap.sh" "escopo \`project\`" "docs/roadmap.md" "**Milestones**" "is:issue milestone:\"M1 — <nome>\"" "**Pull requests**" "apague \`scripts/board.conf\`, rode \`gh auth refresh -s project\`"; do grep -qF "$k" <<<"$m" || { echo "$k"; exit 1; }; done'
+check "README: Quando algo dá errado tem o sync com BOARD=nao" \
+  bash -c 'awk "/^## Quando algo dá errado/ { s = 1; next } /^## / { s = 0 } s" README.md | grep -qF "\`Sem board (BOARD=nao em scripts/board.conf)\`"'
+check "CLAUDE.md, docs/README.md e guia apontam para o Sem board" \
+  bash -c 'grep -qF "Se \`scripts/board.conf\` tem \`BOARD=nao\`, não existe board: não tente criá-lo nem sincronizá-lo" CLAUDE.md && grep -q "Sem board" docs/README.md && grep -q "Sem board" docs/guia.md && grep -q "CA-M1" scripts/test/CA.md'
+
 echo "consistência (CA-H1, CA-H2)"
 cd "$SRC"
 check "todo ./scripts/X citado no CLAUDE.md, READMEs e comandos existe e é executável" \
@@ -677,12 +734,14 @@ check "templates da Parte A: spec, índice de ADR, Features no PRD, PR template 
 check "nenhum arquivo solto na raiz (CA-H5)" \
   bash -c 'test "$(git ls-files | grep -v / | sort | paste -sd " ")" = ".gitignore AGENTS.md CLAUDE.md README.md"'
 
-echo "fumaça ponta a ponta (CA-H3)"
-if "$SRC/scripts/test/smoke.sh" > "$WORK/smoke.out" 2>&1; then
-  ok "$(tail -1 "$WORK/smoke.out")"
-else
-  ko "fumaça"; sed 's/^/    /' "$WORK/smoke.out"
-fi
+echo "fumaça ponta a ponta, com e sem board (CA-H3, CA-M5)"
+for v in "" --sem-board; do
+  if "$SRC/scripts/test/smoke.sh" $v > "$WORK/smoke.out" 2>&1; then
+    ok "$(tail -1 "$WORK/smoke.out")"
+  else
+    ko "fumaça $v"; sed 's/^/    /' "$WORK/smoke.out"
+  fi
+done
 
 echo
 echo "$pass ok, $fail falha(s)"
