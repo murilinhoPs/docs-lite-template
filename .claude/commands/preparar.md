@@ -71,14 +71,35 @@ Sempre na branch `prep/docs`: `git switch prep/docs` se existir (local ou em `or
 ### Fase 2: relatório + plano de organização
 
 1. Mostre a tabela do checklist preenchida, com os itens que travam primeiro.
-2. Mostre o plano de organização dos arquivos: origem → destino → ação (**mover**,
-   **reescrever no template**, **dividir**, **mesclar**, **não importar**), pelo mapa abaixo.
+2. Mostre o plano de organização dos arquivos, um arquivo do material por linha, pelo mapa
+   abaixo:
+
+   | Origem (`_import/…`) | Destino | Ação | Observação |
+   |---|---|---|---|
+   | `Design System.pdf` | `docs/design/design-system.pdf` | copiar, depois do `.md` | conteúdo em `docs/design/design-system.md`; nome proposto em kebab-case |
+   | `tela login.png` | `docs/assets/design/tela-login.png` | copiar | citada na spec do login (Referência) |
+   | `demo.html` | — | não importar | evidência para o inventário |
+
+   - Ações: **copiar**, **reescrever no template**, **dividir**, **mesclar**, **não importar**.
+   - Todo arquivo da pasta entra no plano, com destino ou "não importar" e o motivo.
+   - Mantenha os nomes originais. Nome com espaço, acento ou maiúscula: **proponha** um nome em
+     `kebab-case` (o usuário aprova); o nome novo é o que as specs citam.
+   - Cada PDF entra com o `.md` que o cobre ("`design-system.pdf` → conteúdo em
+     `docs/design/design-system.md`; PDF guardado em `docs/design/`"). PDF sem `.md`
+     correspondente (ex.: telas exportadas só em PDF): diga para onde o texto e a estrutura vão
+     ser extraídos (`design-system.md`, specs, `overview.md`).
+   - Arquivo com mais de 10 MB: mostre o tamanho e pergunte se é para guardar (pesa no repo).
 3. Mostre a lista de trechos para a seção "Para o /planejar" (as duas tabelas: fases, milestones e
    ordem de entrega; trabalho a construir).
 4. Mostre as contradições e a ordem da entrevista.
 5. **Pare** e pergunte: "posso organizar os arquivos e começar a entrevista?". Ajuste o plano
    até o "pode seguir".
-6. Depois da aprovação: organize os arquivos (`git mv` quando só mudam de lugar), grave o
+6. Depois da aprovação: organize os arquivos. O `_import/` fica fora do git, então **copie**
+   (`cp` para o destino e `git add` nele); os originais continuam em `_import/` até a limpeza da
+   Fase 4. `git mv` só vale para arquivo que já é rastreado. Cada PDF só é copiado **depois** de o
+   `.md` que o cobre existir, ou de o conteúdo dele ter sido extraído para o destino certo
+   (`design-system.md`, specs, `overview.md`); o que não puder ser extraído vira `> Pendente:`
+   no `.md`, nunca fica só no PDF. Grave o
    checklist com `fase: entrevista` e `updated:` de hoje, grave a lista na seção
    "Para o /planejar" do `preparo.md` e faça tudo num commit
    (`docs: inventário e organização do material`).
@@ -122,7 +143,20 @@ usuário aceitar):
    template (sem `Closes`, `**Tipo:** só docs`, testes e prints `n/a: PR só de docs`):
    `gh api repos/{owner}/{repo}/pulls -f head=prep/docs -f base=main -f title="[docs] Preparo do projeto" -F body=@<corpo.md>`
    e depois `./scripts/open-pr.sh --update <pr>` para gravar o `**Head:**`.
-4. Relatório final:
+4. **Limpeza do `_import/`.** Só com `fase: pronto` e o PR aberto (se o usuário parou antes, o
+   material fica: a próxima rodada precisa dele). Se a pasta só tem o `.gitkeep`, pule.
+   1. Rode `./scripts/limpar-import.sh [pasta]` (só lista) e confira que todo arquivo aparece no
+      plano da Fase 2, com destino ou "não importar".
+   2. Mostre duas listas: **"já tem cópia ou conteúdo em `docs/`"** (arquivo → onde) e
+      **"não foi importado"** (arquivo e o motivo). Destaque a segunda: é o que se perde ao apagar.
+   3. Pergunte, com `AskUserQuestion` quando disponível: **"Posso apagar tudo em `_import/`?"**
+      1. **Apagar tudo, menos o `.gitkeep` (Recomendado)**
+      2. **Manter por enquanto**
+      3. **Escolher o que apagar:** você diz quais.
+   4. Só depois do "sim", rode `./scripts/limpar-import.sh --apagar [pasta]` (na opção 3, apague
+      só os arquivos escolhidos, com `rm`). Sem resposta (sessão não interativa), **não apague**.
+5. Relatório final:
+   - `_import/`: "apagados: N arquivos de `_import/`" ou "mantidos: N arquivos em `_import/`";
    - o que foi criado (arquivos e de onde veio cada um);
    - os ADRs e o status de cada um;
    - os `> Pendente:` que sobraram, por arquivo;
@@ -140,9 +174,10 @@ usuário aceitar):
 | Visão, público, escopo, prioridades (MoSCoW), lista de features, métricas | `docs/prd.md` (features ganham IDs `F<n>`) |
 | Como uma feature funciona (telas, estados, regras, AC, textos) | `docs/specs/<feature>.md` |
 | Decisão técnica (escolha de stack, padrão, trade-off) | `docs/adr/NNNN-<slug>.md` |
-| Cores, tipografia, espaçamento, componentes | `docs/design/design-system.md` e `tokens.json` |
-| Tela aprovada, mockup | `docs/assets/screens/` |
-| Referência visual, logo, moodboard | `docs/assets/design/` |
+| Cores, tipografia, espaçamento, componentes; design system em `.md` | `docs/design/design-system.md` (+ `tokens.json`): reescrever no template |
+| PDF (design system, telas, qualquer PDF de referência) | `docs/design/<nome>.pdf`: copiar, **depois** de o conteúdo estar no `.md` correspondente |
+| Imagem `.jpg`, `.jpeg`, `.png`, `.webp` (prints, telas, mockups, logo, moodboard) | `docs/assets/design/<nome>`: copiar |
+| HTML da demo | evidência para o inventário: não importar (a limpeza da Fase 4 o apaga, se o usuário aceitar) |
 | Dispositivos, tamanhos de tela, regras de teste e prints | `docs/qa/print-rules.md` |
 | Funcionalidade ou trabalho a construir; fases, milestones, ordem de entrega | **não aqui**: vai para a seção Para o /planejar do `docs/preparo.md` (o `/planejar` decide) |
 
@@ -159,14 +194,17 @@ usuário aceitar):
   Para o /planejar do `docs/preparo.md`; o `/planejar` lê de lá e escreve a seção Milestones do
   `roadmap.md` (o PRD só aponta para ela).
 - Um doc pode virar vários destinos; vários docs podem virar um. Trechos sem destino, pergunte.
-- Os originais que foram reescritos ficam em `docs/assets/originais/` ou são apagados, como o
-  usuário decidir no plano.
+- O material original nunca entra no repositório: o `_import/` fica fora do git, os arquivos
+  guardados são cópias, e a pasta é limpa no fim da Fase 4 (com o "sim" do usuário).
+- PDFs e imagens guardados são referência para pessoas. A fonte para os agentes é o `.md`
+  (`design-system.md`, `tokens.json`, specs); se um PDF e o `.md` divergirem, vale o `.md`.
 
 ## Onde parar
 
 - Fim da Fase 2: plano mostrado, esperando o "pode seguir".
 - Fim de cada rodada da Fase 3: resumo mostrado, esperando "mais uma rodada ou paramos aqui?".
-- Fim da Fase 4: PR `[docs] Preparo do projeto` aberto e relatório final entregue.
+- Fim da Fase 4: PR `[docs] Preparo do projeto` aberto, a pergunta da limpeza do `_import/`
+  respondida (ou sem resposta, com nada apagado) e relatório final entregue.
 
 ## Nunca
 
@@ -177,3 +215,6 @@ usuário aceitar):
 - Fazer mais de 4 perguntas numa rodada, ou emendar rodadas sem perguntar se continua.
 - Perguntar de novo o que já está `tem` ou `n/a` no `preparo.md`.
 - Trabalhar fora da branch `prep/docs` ou dar push na `main`.
+- Apagar qualquer coisa do `_import/` sem o "sim" do usuário, ou antes de `fase: pronto`.
+- Guardar um PDF antes de o conteúdo dele estar num `.md`, ou usar um PDF como fonte no lugar do `.md`.
+- Commitar o material original de `_import/` (ele fica fora do git).

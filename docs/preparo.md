@@ -21,16 +21,18 @@ Nível: **trava** (sem isso o /planejar não roda) · **ajuda** (pode ficar para
 | 4 | Fluxos de usuário com erros e estados vazios | trava | falta | | specs/ | |
 | 5 | Modelo de dados e glossário | trava | falta | | overview.md + specs | |
 | 6 | Integrações externas (APIs, auth, limites) | trava | falta | | specs + ADRs | |
-| 7 | Design system e tokens | trava | falta | | design/ | |
-| 8 | Telas ou mockups das features Must | trava | falta | | assets/screens/ | |
+| 7 | Design system e tokens | trava | falta | | design/design-system.md + tokens.json (PDF em design/, depois do .md) | |
+| 8 | Telas ou mockups das features Must | trava | falta | | assets/design/ (imagens); PDF em design/; specs (Referência) | |
 | 9 | Requisitos não funcionais | ajuda | falta | | prd.md + specs | |
 | 10 | Textos da interface (microcopy, erros) | ajuda | falta | | specs | |
-| 11 | Logo, ícones, fontes | ajuda | falta | | assets/design/ + tokens.json | |
+| 11 | Logo, ícones, fontes | ajuda | falta | | assets/design/ (imagens) + tokens.json | |
 | 12 | Dispositivos e tamanhos de tela | ajuda | falta | | qa/print-rules.md | |
 | 13 | Métricas de sucesso do MVP | ajuda | falta | | prd.md | |
-| 14 | Referências e moodboard | ajuda | falta | | assets/design/ | |
+| 14 | Referências e moodboard | ajuda | falta | | assets/design/ (imagens); PDF em design/ | |
 | 15 | Dados de exemplo para testes | ajuda | falta | | issue de setup | |
 
+- PDFs e imagens guardados são referência para pessoas; os agentes leem os `.md`. O material
+  original fica em `_import/`, fora do git, e o `/preparar` pergunta se pode apagá-lo no final.
 - Item que não se aplica (ex.: projeto sem integrações) → `n/a`, com o motivo em Em aberto.
 - O item 3 também alimenta a issue de setup (stack) e o `.github/workflows/ci.yml` (lint e testes).
 - Item `trava` que ficou `parcial` só por `> Pendente:` não impede o `pronto` se o usuário aceitar;

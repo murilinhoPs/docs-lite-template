@@ -16,10 +16,14 @@ atualização a partir do template) ficam no [`README.md`](../README.md).
 | Visão geral dos milestones e ordem e status das issues | `docs/roadmap.md` |
 | Plano do milestone em andamento | `docs/milestones/m<n>.md` |
 | Checklist do preparo, notas do material para o `/planejar` e registro da entrevista | `docs/preparo.md` |
-| Material a importar | `_import/` |
+| Material a importar (fora do git; limpo no fim do `/preparar`, com o seu "sim") | `_import/` |
+| PDFs de referência (design system, telas) | `docs/design/` (os agentes leem os `.md`) |
+| Imagens (prints, telas, mockups, logo, moodboard) | `docs/assets/design/` |
 | Board do Projects | espelho do roadmap; nunca é editado à mão |
 
 - A spec descreve o presente; a issue descreve a mudança; o PR que muda comportamento atualiza a spec.
+- PDFs e imagens são referência para pessoas: os agentes leem os `.md`, e um PDF só é guardado
+  depois de o conteúdo dele estar no `.md` correspondente.
 - IDs de feature e de AC nunca são reaproveitados. ADR `Aceita` não é editado: um novo o substitui.
 - A versão do PRD é uma tag `prd-vX.Y`; o texto dos docs não leva sha nem versão.
 - O [`docs/README.md`](README.md) tem um exemplo de ponta a ponta: um AC saindo do PRD e passando
@@ -43,7 +47,7 @@ Cada comando, em `.claude/commands/`, tem papel, argumentos, passos, onde parar 
 
 | Comando | O que faz |
 |---|---|
-| `/preparar [pasta]` | Lê o material de `_import/` e preenche o checklist de 15 itens do `preparo.md` (8 travam o planejamento, 7 ajudam). Registra o que o material diz sobre fases, ordem de entrega e trabalho a fazer em "Para o /planejar". Mostra o plano de organização e para; depois entrevista você em rodadas de até 4 perguntas (decisão técnica vira ADR; dúvida vira `> Pendente:`). É retomável e termina com o PR `[docs] Preparo do projeto`. Sem material (pasta vazia e docs ainda no template, ou pasta inexistente), ele para e pergunta: você adiciona os arquivos (podem vir no chat e são salvos em `_import/`), segue sem material ou indica outra pasta. |
+| `/preparar [pasta]` | Lê o material de `_import/` e preenche o checklist de 15 itens do `preparo.md` (8 travam o planejamento, 7 ajudam). Registra o que o material diz sobre fases, ordem de entrega e trabalho a fazer em "Para o /planejar". Mostra o plano de organização e para; depois entrevista você em rodadas de até 4 perguntas (decisão técnica vira ADR; dúvida vira `> Pendente:`). É retomável e termina com o PR `[docs] Preparo do projeto`; depois pergunta se pode apagar o `_import/`. Sem material (pasta vazia e docs ainda no template, ou pasta inexistente), ele para e pergunta: você adiciona os arquivos (podem vir no chat e são salvos em `_import/`), segue sem material ou indica outra pasta. |
 | `/planejar` | Escreve a visão geral de todos os milestones no roadmap, partindo das fases registradas pelo `/preparar`, com a fonte e as divergências. Não cria nada no GitHub. O M0 é sempre "Fundação e spike", com go/no-go. |
 | `/planejar M<n>` | Só para o **próximo** milestone (o anterior encerrado): escreve o doc do milestone e os ACs nas specs, propõe as issues (usando o trabalho registrado) e para. Depois do seu ok, cria o milestone e as issues e abre o PR `[docs] Planejar M<n>`, que também registra o encerramento do milestone anterior. |
 | `/implementar [issue]` | Retoma a task `doing` ou pega a primeira `todo`, confere que a anterior está fechada, cria `task/<N>-<slug>`, marca `doing` e implementa com testes, com commits locais e sem push. **Hotfix:** com outra task em andamento, confirma com você, guarda a task atual num commit `wip:` local, põe o hotfix logo depois da última `done` e, depois do `/fechar` dele, retoma a task interrompida. |
@@ -73,6 +77,7 @@ local e na nuvem. A exceção é o `sync-board.sh`, que usa `gh project`.
 | `open-pr.sh <N>` | Abre o PR pelo template e grava o número dele no roadmap; `--update <pr>` atualiza o Head e os prints depois de um push. |
 | `merge.sh <pr> <head>` | Squash travado no head: o GitHub recusa se houve push depois da sua conferência. |
 | `sync-board.sh` | Calcula a Etapa de cada card: issue fechada → `done`; PR aberto → `review`; `doing` ou `done` sem PR → `doing`; senão `todo`. |
+| `limpar-import.sh [--apagar]` | Lista o `_import/`; com `--apagar`, apaga tudo menos o `.gitkeep` (o `/preparar` pergunta antes). |
 | `atualiza-template.sh [--aplicar]` | Traz o processo novo do template para um projeto antigo, sem tocar nos arquivos do projeto. |
 | `docs-only.sh`, `pr-gate.sh` | Auxiliares do merge gate. |
 

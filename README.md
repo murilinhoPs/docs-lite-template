@@ -267,7 +267,7 @@ preenche as lacunas entrevistando você. O estado fica em [`docs/preparo.md`](do
 um checklist de 15 itens (8 que **travam** o planejamento e 7 que **ajudam**); abra-o antes para
 saber o que separar.
 
-1. Coloque o material na pasta `_import/` (já vem no template, vazia, só com um `.gitkeep`): PRD,
+1. Coloque o material na pasta `_import/` (já vem no template, vazia, só com um `.gitkeep`, e fica fora do git): PRD,
    briefing, notas, PDFs, telas, demo em HTML. Depois rode `/preparar` (ou peça "importe meus docs").
    Sem nada em `_import/` (e com os docs ainda no template), o `/preparar` avisa e espera os arquivos; você pode mandá-los no chat, e ele os salva em `_import/`.
 2. **Inventário:** ele lê tudo e marca cada item do checklist como `tem`, `parcial`, `falta` ou
@@ -280,6 +280,23 @@ saber o que separar.
    `/preparar` retoma pelo `preparo.md`.
 5. **Pronto:** com os itens que travam resolvidos, ele abre o PR `[docs] Preparo do projeto`.
    Depois do merge, rode `/planejar` (visão geral) e, com ele mergeado, `/planejar M0`.
+6. **Limpeza:** com o PR aberto, ele mostra o que já está em `docs/` e o que não foi importado, e
+   pergunta "Posso apagar tudo em `_import/`?". Só apaga com o seu "sim"
+   (`./scripts/limpar-import.sh --apagar`, que nunca apaga o `.gitkeep`).
+
+O `_import/` é a pasta de entrada do material; fica fora do git (`.gitignore`) e é limpa ao final
+do `/preparar`. O que fica guardado são cópias, por formato:
+
+| Material | Vira |
+|---|---|
+| Design system em `.md` | `docs/design/design-system.md` (+ `tokens.json`), reescrito no template |
+| PDF (design system, telas, qualquer referência) | `docs/design/<nome>.pdf`, copiado só **depois** de o conteúdo estar no `.md` correspondente |
+| Imagem `.jpg`, `.jpeg`, `.png`, `.webp` (prints, telas, mockups, logo, moodboard) | `docs/assets/design/<nome>` |
+| HTML da demo | não é importado: serve de evidência para o inventário |
+
+Nomes com espaço, acento ou maiúscula ganham uma proposta em `kebab-case` no plano, e arquivos
+acima de 10 MB geram uma pergunta antes de entrar no repo. PDFs e imagens são referência para
+pessoas: os agentes leem os `.md` (veja [`docs/design/README.md`](docs/design/README.md)).
 
 Ele não inventa conteúdo e não cria issues (isso é do `/planejar`). O que o material diz sobre
 fases, ordem de entrega e trabalho a fazer fica registrado na seção "Para o /planejar" do

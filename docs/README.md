@@ -18,7 +18,7 @@ comportamento atualiza a spec no mesmo PR.
 | Arquivo / pasta | O que guarda |
 |---|---|
 | [guia.md](guia.md) | Resumo do processo para pessoas: modelo, fluxo, comandos, scripts, merge gate (se divergir, vale o `CLAUDE.md`) |
-| [`../_import/`](../_import/) | Material a importar pelo `/preparar` (PRD, design, telas, demo, notas). Sem nada em `_import/` (e com os docs ainda no template), o `/preparar` avisa e espera os arquivos; você pode mandá-los no chat, e ele os salva em `_import/`. |
+| [`../_import/`](../_import/) | Pasta de entrada do material (PRD, design, telas, demo, notas); fica fora do git e é limpa ao final do `/preparar`, que pergunta antes de apagar. Sem nada em `_import/` (e com os docs ainda no template), o `/preparar` avisa e espera os arquivos; você pode mandá-los no chat, e ele os salva em `_import/`. |
 | [preparo.md](preparo.md) | Checklist do preparo (o que o projeto precisa antes do `/planejar`), a seção "Para o /planejar" (o que o material diz sobre fases, ordem de entrega e trabalho a fazer) e o registro da entrevista |
 | [overview.md](overview.md) | Resumo do projeto, stack e arquitetura |
 | [prd.md](prd.md) | Visão, escopo, MoSCoW e a tabela de Features (`F1`, `F2`…) |
@@ -26,9 +26,9 @@ comportamento atualiza a spec no mesmo PR.
 | [roadmap.md](roadmap.md) | Milestones (visão geral, em prosa) e as issues por milestone, com ordem e status |
 | [milestones/](milestones/) | Um doc por milestone já detalhado (`m<n>.md`): escopo, ACs referenciados, critério de saída, riscos, ordem; vira histórico quando encerra |
 | [adr/](adr/README.md) | Decisões técnicas, numeradas (`0001-...`), com índice |
-| [design/](design/) | Design system e tokens |
+| [design/](design/) | Design system e tokens (`.md` e `tokens.json`, a fonte) e PDFs de referência para pessoas ([README](design/README.md)) |
 | [qa/print-rules.md](qa/print-rules.md) | Como e o que printar quando o Claude testa |
-| [assets/](assets/) | Imagens oficiais (telas aprovadas, referências) |
+| [assets/design/](assets/design/) | Imagens (`.jpg`, `.jpeg`, `.png`, `.webp`): prints, telas, mockups, logo, moodboard, como referência |
 | [prompts/](prompts/) | Corpos modelo de issue e prompts prontos para passar a uma IA |
 
 ## Regras
@@ -54,8 +54,10 @@ comportamento atualiza a spec no mesmo PR.
 - ADR `Aceita` não é editado: um novo ADR o substitui (`Superada por 0007`).
 - Versão do PRD: git tag `prd-vX.Y` (`git tag prd-v1.0 && git push origin prd-v1.0`). Nunca
   escreva sha ou número de versão no texto dos docs; o histórico está no git.
-- Imagem oficial vai em `docs/assets/`; print de teste vai na branch `pr-assets`
-  (`issue-<N>/<sha7>/`).
+- Imagem oficial vai em `docs/assets/design/`; PDF de referência, em `docs/design/`; print de
+  teste vai na branch `pr-assets` (`issue-<N>/<sha7>/`).
+- Os agentes leem os `.md`, nunca os PDFs de `docs/design/` (se divergirem, vale o `.md`); uma
+  imagem de `docs/assets/design/` só é aberta quando uma spec a cita, ou numa task `type:design`.
 - Diagrama é Mermaid; imagem só para tela real ou referência visual.
 
 ## Exemplo de ponta a ponta

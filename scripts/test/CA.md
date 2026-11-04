@@ -126,6 +126,17 @@ Os comandos são prompts: estes CA conferem o texto do `preparar.md` (também au
 | CA-M4 | README ("Board → Sem board" e "Quando algo dá errado"), `docs/guia.md`, `docs/README.md`, `CLAUDE.md` e esta matriz atualizados | run: "… (CA-M4)" |
 | CA-M5 | `run.sh`, `smoke.sh` e `smoke.sh --sem-board` passam | run: "fumaça ponta a ponta, com e sem board (CA-H3, CA-M5)" e a suíte toda |
 
+## Parte N (onde o material do `/preparar` fica e limpeza do `_import/`)
+
+| CA | O que | Cobertura |
+|---|---|---|
+| CA-N1 | `preparar.md` e `preparo.md` mapeiam PDF → `docs/design/` e imagem → `docs/assets/design/`; a pasta antiga de telas não existe e ninguém a cita | run: "… (CA-N1)"; manual: `grep -rn "assets/scr""eens" --exclude-dir=.git .` (vazio) e `sed -n '/^## Mapa/,/^## Regras/p' .claude/commands/preparar.md` |
+| CA-N2 | PDF só é guardado depois do `.md` (ou da extração para ele, com `> Pendente:` no que não der); `docs/design/README.md` existe; o `CLAUDE.md` manda ler os `.md` | run: "… (CA-N2)"; manual: `grep -n "PDF" .claude/commands/preparar.md CLAUDE.md docs/design/README.md` |
+| CA-N3 | `_import/*` e `!_import/.gitkeep` no `.gitignore`; a Fase 2 copia (`cp` + `git add`), `git mv` só para rastreado; nomes em kebab-case propostos; arquivo acima de 10 MB gera pergunta | run: "… (CA-N3, CA-N5)" (`git check-ignore`) e "… (CA-N3)"; manual: `grep -n "cp\|10 MB\|kebab" .claude/commands/preparar.md` |
+| CA-N4 | A limpeza só roda com `fase: pronto`, depois do PR e antes do relatório; mostra as duas listas, pergunta e só apaga com o "sim"; sem resposta, não apaga | run: "… (CA-N4)"; manual: `sed -n '/Limpeza do/,/Relatório final/p' .claude/commands/preparar.md` |
+| CA-N5 | `limpar-import.sh`: lista sem apagar; `--apagar` mantém o `.gitkeep`; recusa raiz, `.`, `..`, `docs`, `scripts`, `.claude`, `.github`, pasta com `.git`, link e caminho fora do repo; `git rm` no rastreado | run: "limpar-import.sh e _import/ fora do git (CA-N3, CA-N5)" |
+| CA-N6 | README, `docs/guia.md`, `docs/README.md`, prompt de setup, spec template e esta matriz atualizados; `run.sh` e `smoke.sh` passam | run: "… (CA-N6)" e a suíte toda; manual: `grep -ln "fora do git" README.md docs/README.md docs/guia.md docs/prompts/setup-a-partir-de-docs.md` |
+
 ## Parte H (fechamento)
 
 | CA | O que | Cobertura |

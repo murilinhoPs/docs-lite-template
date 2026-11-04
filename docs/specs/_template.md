@@ -17,7 +17,7 @@ o comportamento atualiza esta spec.
 
 | Rota ou tela | O que mostra | Referência |
 |---|---|---|
-| | | `../assets/screens/<tela>.png` |
+| | | `../assets/design/<tela>.png` |
 
 ## Estados
 

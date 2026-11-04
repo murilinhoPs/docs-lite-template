@@ -712,6 +712,59 @@ check "README: Quando algo dá errado tem o sync com BOARD=nao" \
 check "CLAUDE.md, docs/README.md e guia apontam para o Sem board" \
   bash -c 'grep -qF "Se \`scripts/board.conf\` tem \`BOARD=nao\`, não existe board: não tente criá-lo nem sincronizá-lo" CLAUDE.md && grep -q "Sem board" docs/README.md && grep -q "Sem board" docs/guia.md && grep -q "CA-M1" scripts/test/CA.md'
 
+echo "limpar-import.sh e _import/ fora do git (CA-N3, CA-N5)"
+setup limpa
+check "_import/qualquer.pdf é ignorado pelo git" git check-ignore -q _import/qualquer.pdf
+check "_import/.gitkeep não é ignorado (e é rastreado)" \
+  bash -c '! git check-ignore -q _import/.gitkeep && git ls-files --error-unmatch _import/.gitkeep >/dev/null'
+mkdir -p _import/telas && echo pdf > "_import/Design System.pdf" && echo png > _import/telas/login.png
+echo md > _import/rastreado.md && git add -f _import/rastreado.md && git commit -qm "rastreado por engano"
+ln -s "$SRC/README.md" _import/link-fora
+o="$(./scripts/limpar-import.sh)"
+check "sem --apagar: lista com tamanhos e total, sem apagar" \
+  bash -c 'grep -q "_import/Design System.pdf" <<<"$0" && grep -q "_import/telas/login.png" <<<"$0" && grep -q "^total: 4 arquivo(s)" <<<"$0" && grep -q "nada apagado" <<<"$0" && test -f "_import/Design System.pdf" && test -f _import/telas/login.png' "$o"
+for d in . .. docs scripts .claude .github "$WORK" nao-existe; do
+  check "recusa '$(basename "$d")' (saída 1)" bash -c '! ./scripts/limpar-import.sh --apagar "$0" >/dev/null 2>&1; test $? -eq 0 && test "$(./scripts/limpar-import.sh --apagar "$0" >/dev/null 2>&1; echo $?)" = 1' "$d"
+done
+mkdir -p _import/outro && git init -q _import/outro
+check "recusa pasta que contém .git" bash -c 'o="$(./scripts/limpar-import.sh --apagar _import 2>&1)"; test $? = 1 && grep -q "contém um .git" <<<"$o"'
+rm -rf _import/outro
+ln -s "$WORK" fora-link
+check "recusa link simbólico para fora do repo" bash -c '! ./scripts/limpar-import.sh --apagar fora-link >/dev/null 2>&1'
+rm fora-link
+o="$(./scripts/limpar-import.sh --apagar)"
+check "--apagar apaga tudo menos o .gitkeep" test "$(find _import -mindepth 1 | paste -sd ' ')" = "_import/.gitkeep"
+check "--apagar usa git rm no arquivo rastreado, e avisa" \
+  bash -c 'grep -q "apagado (git rm, era rastreado): _import/rastreado.md" <<<"$0" && git diff --cached --name-status | grep -qx "D	_import/rastreado.md"' "$o"
+check "--apagar não segue o link (o destino continua lá)" test -f "$SRC/README.md"
+check "--apagar imprime o total apagado" grep -q "^apagados: 4 arquivo(s) de _import/ (o .gitkeep ficou)" <<<"$o"
+check "pasta vazia: diz que só há o .gitkeep" test "$(./scripts/limpar-import.sh --apagar)" = "Nada em _import/ (só o .gitkeep)."
+cd "$SRC"
+
+echo "/preparar: destino por formato, PDF depois do .md e limpeza (CA-N1 a CA-N4, CA-N6)"
+PR=.claude/commands/preparar.md
+check "nenhuma referência à pasta antiga de telas (CA-N1)" \
+  bash -c '! grep -rn "$0" --exclude-dir=.git . && test ! -e "docs/$0" && test -f docs/assets/design/.gitkeep' "assets/scr""eens"
+check "mapa: PDF → docs/design/, imagem → docs/assets/design/, HTML não importa (CA-N1)" \
+  bash -c 'm="$(sed -n "/^## Mapa/,/^## Regras/p" "$0")"; grep -qF "| PDF (design system, telas, qualquer PDF de referência) | \`docs/design/<nome>.pdf\`" <<<"$m" && grep -qF "\`.jpg\`, \`.jpeg\`, \`.png\`, \`.webp\`" <<<"$m" && grep -qF "\`docs/assets/design/<nome>\`: copiar" <<<"$m" && grep -q "HTML da demo.*não importar" <<<"$m"' "$PR"
+check "preparo.md: itens 7, 8, 11 e 14 com os destinos novos (CA-N1)" \
+  bash -c 'grep -q "^| 7 |.*PDF em design/" docs/preparo.md && grep -q "^| 8 |.*assets/design/ (imagens); PDF em design/" docs/preparo.md && grep -q "^| 11 |.*assets/design/ (imagens)" docs/preparo.md && grep -q "^| 14 |.*assets/design/ (imagens); PDF em design/" docs/preparo.md'
+check "spec template: Referência em ../assets/design/ (CA-N1)" grep -qF '`../assets/design/<tela>.png`' docs/specs/_template.md
+check "PDF só depois do .md, extração e > Pendente: (CA-N2)" \
+  bash -c 's="$(sed -n "/^### Fase 2/,/^### Fase 3/p" "$0")"; grep -q "Cada PDF entra com o \`.md\` que o cobre" <<<"$s" && grep -q "Cada PDF só é copiado \*\*depois\*\* de o" <<<"$s" && grep -q "nunca fica só no PDF" <<<"$s"' "$PR"
+check "docs/design/README.md e a regra do CLAUDE.md (CA-N2)" \
+  bash -c 'grep -q "Se um PDF e o \`.md\` divergirem, vale o \`.md\`" docs/design/README.md && grep -q "Não use PDFs de \`docs/design/\` como fonte; leia os \`.md\`" CLAUDE.md && grep -q "numa task \`type:design\`" CLAUDE.md'
+check "Fase 2 copia (cp + git add), git mv só para rastreado, kebab-case e 10 MB (CA-N3)" \
+  bash -c 's="$(sed -n "/^### Fase 2/,/^### Fase 3/p" "$0")"; grep -q "(\`cp\` para o destino e \`git add\` nele)" <<<"$s" && grep -q "\`git mv\` só vale para arquivo que já é rastreado" <<<"$s" && grep -q "kebab-case" <<<"$s" && grep -q "mais de 10 MB" <<<"$s" && ! grep -q "git mv\` quando" <<<"$s"' "$PR"
+check "limpeza: só com fase pronto, duas listas, pergunta e só apaga com o sim (CA-N4)" \
+  bash -c 's="$(sed -n "/^### Fase 4/,/^## Mapa/p" "$0")"; for k in "Só com \`fase: pronto\`" "já tem cópia ou conteúdo em \`docs/\`" "não foi importado" "Posso apagar tudo em \`_import/\`?" "Apagar tudo, menos o \`.gitkeep\` (Recomendado)" "Manter por enquanto" "Escolher o que apagar" "Só depois do \"sim\"" "./scripts/limpar-import.sh --apagar" "Sem resposta (sessão não interativa), **não apague**" "apagados: N arquivos de \`_import/\`" "mantidos: N arquivos em \`_import/\`"; do grep -qF "$k" <<<"$s" || { echo "$k"; exit 1; }; done' "$PR"
+check "a limpeza vem depois do PR aberto e antes do relatório (CA-N4)" \
+  bash -c 's="$(sed -n "/^### Fase 4/,/^## Mapa/p" "$0")"; a=$(grep -n "pulls -f head=prep/docs" <<<"$s" | cut -d: -f1); b=$(grep -n "Limpeza do \`_import/\`" <<<"$s" | cut -d: -f1); c=$(grep -n "Relatório final" <<<"$s" | cut -d: -f1); test "$a" -lt "$b" && test "$b" -lt "$c"' "$PR"
+check "Nunca: apagar sem o sim, PDF antes do .md, commitar o original (CA-N4)" \
+  bash -c 'grep -q "Apagar qualquer coisa do \`_import/\` sem o \"sim\" do usuário" "$0" && grep -q "Guardar um PDF antes de o conteúdo dele estar num \`.md\`" "$0"' "$PR"
+check "README, docs/README, guia e prompt de setup com o _import fora do git e a limpeza (CA-N6)" \
+  bash -c 'grep -q "fica fora do git (\`.gitignore\`) e é limpa ao final" README.md && grep -q "Posso apagar tudo em \`_import/\`?" README.md && grep -q "fica fora do git e é limpa ao final do \`/preparar\`" docs/README.md && grep -q "limpo no fim do \`/preparar\`" docs/guia.md && grep -q "os agentes leem os \`.md\`" docs/guia.md && grep -q "pergunta se pode limpar o \`_import/\`" docs/prompts/setup-a-partir-de-docs.md && grep -q "CA-N1" scripts/test/CA.md'
+
 echo "consistência (CA-H1, CA-H2)"
 cd "$SRC"
 check "todo ./scripts/X citado no CLAUDE.md, READMEs e comandos existe e é executável" \

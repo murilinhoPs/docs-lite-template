@@ -126,6 +126,7 @@ usa `gh project` e só roda onde o board é acessível.
 | Publicar este template (só no repo do template) | `./scripts/publish-template.sh [nome]` |
 | Escolher a próxima task e conferir a ordem (`/implementar`) | `./scripts/next-task.sh [<N>]` |
 | Saber qual é a task, a branch e o PR (`/abrir-pr`, `/revisar`) | `./scripts/task-atual.sh [<N>]` |
+| Listar ou limpar o `_import/` (fim do `/preparar`, com o "sim" do usuário) | `./scripts/limpar-import.sh [--apagar] [pasta]` |
 | Trazer as mudanças do template para um projeto antigo | `./scripts/atualiza-template.sh [--aplicar] [url]` |
 | Rodar os testes dos scripts | `./scripts/test/run.sh` |
 
@@ -159,6 +160,9 @@ usa `gh project` e só roda onde o board é acessível.
 - Decisão técnica nova e duradoura → proponha um ADR (`Proposta`) em `docs/adr/` e pergunte antes
   de criar. ADR `Aceita` não é editado: um novo ADR o substitui (`Superada por NNNN`).
 - Mudou comportamento? Atualize a spec no mesmo commit.
+- Não use PDFs de `docs/design/` como fonte; leia os `.md`. Abra uma imagem de
+  `docs/assets/design/` só quando uma spec a cita em Referência, ou numa task `type:design` (para
+  `/qa` e `/revisar` conferirem prints).
 - Versão do PRD é uma git tag `prd-vX.Y`; nunca escreva sha ou versão no texto dos docs.
 - Nunca dê push na `main`.
 - Outras ferramentas leem o `AGENTS.md`, que manda seguir este arquivo e os comandos de
