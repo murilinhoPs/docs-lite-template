@@ -1,5 +1,9 @@
-# Ajuste para a stack na task 001
+# Ajuste para a stack na issue de setup ([chore] Setup do projeto)
 .DS_Store
 .env
 .env.*
 *.log
+
+# Material de entrada do /preparar: fica fora do git e é limpo no fim do /preparar
+_import/*
+!_import/.gitkeep

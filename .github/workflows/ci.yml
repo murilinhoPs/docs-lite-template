@@ -1,0 +1,41 @@
+# CI da stack do projeto. Placeholder: troque o passo "Testes da stack" pelos
+# comandos de lint e testes (AC da issue de setup).
+#
+# Roda em todo pull_request, sem filtro de paths: o check "ci" é obrigatório no
+# ruleset da main, e um check obrigatório que não roda trava o PR.
+# PR só de docs (scripts/docs-only.sh) termina verde logo no início.
+name: CI
+
+on:
+  pull_request:
+
+# Um run por PR: um evento duplicado (ou um push novo) cancela o run anterior.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: PR só de docs?
+        id: docs
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          if ./scripts/docs-only.sh "origin/$BASE" HEAD; then
+            echo "PR só de docs: testes da stack dispensados."
+            echo "only=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Testes da stack
+        if: steps.docs.outputs.only != 'true'
+        run: echo "configure os testes da stack em .github/workflows/ci.yml"
