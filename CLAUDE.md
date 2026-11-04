@@ -32,14 +32,16 @@ Siga o comando; as frases ao lado continuam valendo e levam ao mesmo comando.
 | Planejar: um milestone | `/planejar M<n>` | "planeje o M1" | PR `[docs] Planejar M<n>` aberto, issues criadas |
 | Implementar | `/implementar [issue]` | "próxima task", "implemente a issue N" | commits locais, antes do push |
 | Testar | `/qa [issue]` | "teste você também" | prints na `pr-assets` e relatório |
-| Abrir o PR | `/abrir-pr [issue]` | "pode abrir o PR" | PR aberto com o head no corpo |
-| Revisar | `/revisar [pr]` | "revise o PR" | review postado (subagente `revisor`) |
+| Abrir o PR | `/abrir-pr [issue]` | "pode abrir o PR" (sem precisar do número: descobre pelo `task-atual.sh`) | PR aberto ou atualizado, com o head no corpo |
+| Revisar | `/revisar [pr \| local]` | "revise o PR", "revise localmente" | modo PR: review postado (subagente `revisor`); modo local (sem PR): review só na conversa |
 | Corrigir | `/corrigir [pr ou issue]` | "corrija" | correções commitadas (e enviadas) |
 | Fechar | `/fechar [pr]` | "fechei o merge", "feche a task" | board e nits atualizados; no fim do milestone, critério de saída e go/no-go |
 
 Fluxo: `/preparar` → merge → `/planejar` (visão geral) → merge → `/planejar M0` → merge → ciclo das
-tasks do M0 (`/implementar` … `/fechar`) → `/fechar` (go/no-go) → `/planejar M1` → ciclo → `/fechar`
-→ `/planejar M2` …
+tasks do M0 → `/fechar` (go/no-go) → `/planejar M1` → ciclo → `/fechar` → `/planejar M2` …
+
+Ciclo de uma task: `/implementar` → seu teste → `/revisar local` (opcional) → `/abrir-pr` →
+`/revisar` → merge → `/fechar`.
 
 ## Em outros agentes
 
@@ -121,6 +123,7 @@ usa `gh project` e só roda onde o board é acessível.
 | Configurar um projeto novo (uma vez, só local, pelo usuário) | `./scripts/bootstrap.sh` |
 | Publicar este template (só no repo do template) | `./scripts/publish-template.sh [nome]` |
 | Escolher a próxima task e conferir a ordem (`/implementar`) | `./scripts/next-task.sh [<N>]` |
+| Saber qual é a task, a branch e o PR (`/abrir-pr`, `/revisar`) | `./scripts/task-atual.sh [<N>]` |
 | Trazer as mudanças do template para um projeto antigo | `./scripts/atualiza-template.sh [--aplicar] [url]` |
 | Rodar os testes dos scripts | `./scripts/test/run.sh` |
 

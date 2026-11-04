@@ -106,6 +106,16 @@ Os comandos são prompts: estes CA conferem o texto do `preparar.md` (também au
 | CA-K4 | Sessão não interativa: para com a mensagem, sem relatório | manual: `grep -n "sessão não interativa" .claude/commands/preparar.md`; run: "… (CA-K4)" |
 | CA-K5 | README, `docs/README.md`, prompt de setup e `CA.md` atualizados; `run.sh` e `smoke.sh` passam | manual: `grep -ln "avisa e espera os arquivos" README.md docs/README.md docs/prompts/setup-a-partir-de-docs.md CLAUDE.md`; run: "… (CA-K5)" e a suíte toda |
 
+## Parte L (`/revisar` local e `/abrir-pr` sem número)
+
+| CA | O que | Cobertura |
+|---|---|---|
+| CA-L1 | `task-atual.sh` resolve por argumento → branch atual → única linha `doing` → única branch `task/*` à frente da `main`; sai 2 (ambíguo, com as candidatas) ou 3 (nada); issue fechada falha; `pr`/`pr_state` open, merged e closed; só REST do repo | run: "task-atual.sh (CA-L1)" |
+| CA-L2 | `/abrir-pr` sem número usa o `task-atual.sh`, anuncia a issue e a branch, troca de branch só com a árvore limpa, para em ambíguo/nada/PR mergeado ou fechado e atualiza o PR aberto | run: "… (CA-L2)"; manual: `grep -n "task-atual" .claude/commands/abrir-pr.md` |
+| CA-L3 | `/revisar` tem modo PR e modo local; o local revisa `git diff origin/main...HEAD`, avisa alterações não commitadas, marca os checks `n/a (sem PR)`, cita o sha7 e não posta nada | run: "… (CA-L3)"; manual: `sed -n '/^## Modo local/,/^## O que verificar/p' .claude/agents/revisor.md` |
+| CA-L4 | O `revisor` aceita número de PR ou `local`, mantém `event=COMMENT` no modo PR e nunca aprova nem pede mudanças | run: "… (CA-L4)" |
+| CA-L5 | `CLAUDE.md`, `README.md`, `docs/README.md` e `docs/guia.md` mostram o mesmo ciclo com `/revisar local` (opcional); "Quando algo dá errado" tem as linhas novas; suíte passa | run: "… (CA-L5)" e a suíte toda; manual: `grep -n "revisar local" CLAUDE.md README.md docs/README.md docs/guia.md` |
+
 ## Parte H (fechamento)
 
 | CA | O que | Cobertura |

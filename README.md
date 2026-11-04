@@ -47,8 +47,8 @@ Fluxo: `/preparar` → merge → `/planejar` (visão geral) → merge → `/plan
 | `/planejar M<n>` | PM + docs | Só o próximo milestone: doc, specs, milestone e issues; PR `[docs] Planejar M<n>` aberto |
 | `/implementar [issue]` | Dev | Commits locais feitos, antes do push |
 | `/qa [issue]` | Tester | Prints na `pr-assets` e relatório entregue |
-| `/abrir-pr [issue]` | Dev | PR aberto ou atualizado, com o head no corpo |
-| `/revisar [pr]` | Reviewer (subagente) | Review postado como comentário |
+| `/abrir-pr [issue]` | Dev | PR aberto ou atualizado, com o head no corpo (sem argumento, descobre a issue e o PR) |
+| `/revisar [pr \| local]` | Reviewer (subagente) | Modo PR: review postado como comentário; modo local (sem PR): review só na conversa |
 | `/corrigir [pr ou issue]` | Dev | Correções commitadas (e enviadas, se o PR existir) |
 | `/fechar [pr]` | PM | Board, nits e milestone atualizados |
 
@@ -59,9 +59,11 @@ Fluxo: `/preparar` → merge → `/planejar` (visão geral) → merge → `/plan
 1. `/planejar` (uma vez) → visão geral: todos os milestones no roadmap, sem issues; depois `/planejar M<n>`
    para o próximo milestone → doc do milestone, ACs nas specs e issues; você faz o merge de cada PR.
 2. `/implementar` → pega a primeira issue `todo`, cria `task/<N>-<slug>`, marca `doing` e faz commits locais.
-3. Você testa contra os ACs (o `/implementar` diz como).
+3. Você testa contra os ACs (o `/implementar` diz como). Se quiser, `/revisar local` revisa a
+   branch antes do PR: o review fica só na conversa, nada é postado.
 4. `/qa` (opcional) → o Claude testa como tester e salva prints em `pr-assets/issue-<N>/<sha7>/`.
-5. `/abrir-pr` → marca `done`, dá push e abre o PR com o head no corpo e o comando de merge pronto.
+5. `/abrir-pr` → descobre a issue e o PR sozinho (`task-atual.sh`), marca `done`, dá push e abre o
+   PR (ou atualiza o que já existe) com o head no corpo e o comando de merge pronto.
 6. `/revisar` → o subagente `revisor` posta um review (`COMMENT`) com bloqueantes, deveria e nits.
 7. `/corrigir` → corrige só o apontado, atualiza o PR e diz se você precisa testar de novo.
 8. Você faz o merge (`./scripts/merge.sh <pr> <head>`) e roda `/fechar` (board e nits). Na última
@@ -183,6 +185,9 @@ Na coluna Sintoma, o texto entre crases é a mensagem que o script, o check ou o
 | conflito no rebase (`CONFLICT` do git) | a mesma parte mudou na `main` | o agente para e mostra os arquivos; você decide |
 | `merge.sh`: `Head branch was modified` | push depois do review ou do sha copiado | conferir o push; `/revisar` se mudou código; rodar o `merge.sh` com o head atual |
 | `merge.sh`: `Use o sha completo (40 caracteres) do head` | sha curto ou errado | copiar o head de 40 caracteres que o `/abrir-pr` mostra |
+| `/abrir-pr` pergunta: `Mais de uma task possível` | o `task-atual.sh` achou mais de uma candidata (várias linhas `doing`, ou várias branches `task/*` à frente da `main`) | escolher a issue, ou rodar `/abrir-pr <N>` |
+| `/abrir-pr` para: `Não achei task implementada` | nenhuma branch `task/*` com commits, nenhuma linha `doing` | `/implementar`, ou `/abrir-pr <N>` |
+| `/revisar` para: `nada para revisar` | na `main`, ou a branch não tem commits à frente da `main` | rodar na branch da task, depois dos commits |
 | `/implementar` para: `escreva o AC na spec` | a issue cita um AC que ninguém escreveu | escrever o AC na spec (no PR da task ou pelo `/planejar M<n>` do milestone atual) |
 | `/implementar` para: `ainda está aberta: falta o merge ou o /fechar` | o PR anterior não foi mergeado ou o `/fechar` não rodou | merge e `/fechar`, ou passar o número da issue para pular a ordem |
 | `/implementar` pergunta: `está em andamento; faço o hotfix` | `/implementar <N>` com outra task `doing` | confirmar (o agente guarda a task atual num commit `wip:` local) ou negar |

@@ -589,6 +589,72 @@ check "README e docs/README apontam para o guia" bash -c 'grep -q "docs/guia.md"
 check "o guia vem inteiro do template (atualiza-template.sh e README)" \
   bash -c 'grep -q "INTEIROS=(.* docs/guia.md)" scripts/atualiza-template.sh && grep -q "AGENTS.md\`, \`docs/guia.md\` |" README.md'
 
+echo "task-atual.sh (CA-L1)"
+setup atual
+cat > "$R" <<'MD'
+## Milestones
+
+### M1 — MVP
+- **Objetivo:** x
+
+## Issues por milestone
+
+### M1 — MVP
+
+| Ordem | Issue | Título | Status | Spec | PR |
+|---|---|---|---|---|---|
+| 1 | #1 | [feat] Um | done | — | #9 |
+| 2 | #2 | [feat] Dois | todo | — | |
+| 3 | #3 | [feat] Três | todo | — | |
+| 4 | #4 | [feat] Quatro | todo | — | |
+MD
+git commit -qam roadmap && git push -q
+jq -n '[{number:1,state:"closed"},{number:2,state:"open"},{number:3,state:"open"},{number:4,state:"open"}] | map(. + {labels:[]})' > "$GH_STATE/issues.json"
+atual() { ./scripts/task-atual.sh "$@" 2>/dev/null; }
+rc() { ./scripts/task-atual.sh "$@" >/dev/null 2>&1; echo $?; }
+check "nada encontrado: sai com 3" test "$(rc)" = 3
+git switch -qc task/2-dois && echo a > a.txt && git add -A && git commit -qm a && git switch -q main
+check "pela única branch task/* à frente da main" test "$(atual)" = "issue=2 branch=task/2-dois pr=- pr_state=- origem=commits"
+git switch -qc task/3-tres && echo b > b.txt && git add -A && git commit -qm b && git switch -q main
+o="$(./scripts/task-atual.sh 2>/dev/null; echo "rc=$?")"
+check "duas branches à frente da main: sai com 2 e lista as candidatas" \
+  bash -c 'grep -q "^issue=2 branch=task/2-dois razão=commits à frente da main" <<<"$0" && grep -q "^issue=3 branch=task/3-tres razão=commits à frente da main" <<<"$0" && grep -q "rc=2" <<<"$0"' "$o"
+sed -i 's/| 2 | #2 | \[feat\] Dois | todo |/| 2 | #2 | [feat] Dois | doing |/' "$R"
+check "a única linha doing do roadmap decide antes dos commits" test "$(atual | sed 's/.*origem=//'):$(atual | cut -d' ' -f1)" = "roadmap:issue=2"
+sed -i 's/| 3 | #3 | \[feat\] Três | todo |/| 3 | #3 | [feat] Três | doing |/' "$R"
+check "duas linhas doing: sai com 2" test "$(rc)" = 2
+git checkout -q -- "$R"
+git switch -q task/3-tres
+check "a branch atual decide antes do roadmap" test "$(atual)" = "issue=3 branch=task/3-tres pr=- pr_state=- origem=branch"
+check "o argumento decide antes de tudo" test "$(atual 2)" = "issue=2 branch=task/2-dois pr=- pr_state=- origem=arg"
+git switch -q main
+git push -q origin task/2-dois && git branch -qD task/2-dois
+check "branch só em origin: usa a remota" test "$(atual 2 | cut -d' ' -f2)" = "branch=task/2-dois"
+sha2="$(git rev-parse origin/task/2-dois)"
+echo "[{\"number\":11,\"state\":\"open\",\"body\":\"Closes #2\",\"head\":{\"ref\":\"task/2-dois\",\"label\":\"acme:task/2-dois\",\"sha\":\"$sha2\"}}]" > "$GH_STATE/pulls.json"
+check "PR aberto: pr e pr_state=open" test "$(atual 2 | cut -d' ' -f3,4)" = "pr=11 pr_state=open"
+jq 'map(.state = "closed" | .merged_at = "2026-01-01T00:00:00Z")' "$GH_STATE/pulls.json" > "$GH_STATE/x" && mv "$GH_STATE/x" "$GH_STATE/pulls.json"
+check "PR mergeado: pr_state=merged" test "$(atual 2 | cut -d' ' -f3,4)" = "pr=11 pr_state=merged"
+jq 'map(del(.merged_at))' "$GH_STATE/pulls.json" > "$GH_STATE/x" && mv "$GH_STATE/x" "$GH_STATE/pulls.json"
+check "PR fechado sem merge: pr_state=closed" test "$(atual 2 | cut -d' ' -f3,4)" = "pr=11 pr_state=closed"
+o="$(./scripts/task-atual.sh 1 2>&1; echo "rc=$?")"
+check "issue fechada: falha explicando" bash -c 'grep -q "A issue #1 está fechada" <<<"$0" && grep -q "rc=1" <<<"$0"' "$o"
+check "task-atual.sh só usa rotas do repo" only_repo_routes
+cd "$SRC"
+
+echo "/abrir-pr sem número e /revisar local (CA-L2 a CA-L5)"
+AP=.claude/commands/abrir-pr.md RV=.claude/commands/revisar.md AG=.claude/agents/revisor.md
+check "/abrir-pr resolve pelo task-atual.sh, troca de branch só com a árvore limpa e para nos casos ruins (CA-L2)" \
+  bash -c 'for k in "./scripts/task-atual.sh [<N>]" "Saída \`2\` (ambíguo)" "não achei task implementada" "já tem o PR #<P>" "com a árvore limpa" "com a árvore suja, **pare**" "./scripts/open-pr.sh --update <P>" "PR existente #<P>: atualizo"; do grep -qF "$k" "$0" || { echo "$k"; exit 1; }; done' "$AP"
+check "/revisar tem os dois modos e a regra de resolução (CA-L3)" \
+  bash -c 'for k in "| PR |" "| Local |" "\`local\` → modo local" "sem PR, revisando localmente" "nada para revisar" "git diff origin/main...HEAD"; do grep -qF "$k" "$0" || { echo "$k"; exit 1; }; done' "$RV"
+check "revisor no modo local: diff origin/main...HEAD, avisa não commitado, checks n/a, sha7, não posta (CA-L3)" \
+  bash -c 'm="$(sed -n "/^## Modo local/,/^## O que verificar/p" "$0")"; grep -q "git diff <base>...HEAD" <<<"$m" && grep -q "git status --porcelain" <<<"$m" && grep -qF "\`ci\` e \`pr-gate\`: n/a (sem PR)" <<<"$m" && grep -q "sha7 revisado" <<<"$m" && grep -q "Não poste nada" <<<"$m" && ! grep -q "/reviews" <<<"$m"' "$AG"
+check "revisor aceita PR ou local e mantém COMMENT, nunca editar e nunca APPROVE (CA-L4)" \
+  bash -c 'grep -q "\*\*número do PR\*\* (modo PR) \*\*ou\*\* \`local\`" "$0" && sed -n "/^## Modo PR/,/^## Modo local/p" "$0" | grep -q "event=COMMENT" && grep -q "não edita código" "$0" && grep -q "event=APPROVE" "$0" && grep -q "No modo local: postar review" "$0"' "$AG"
+check "mesmo ciclo com o review local opcional em CLAUDE.md, README, docs/README e guia (CA-L5)" \
+  bash -c 'grep -qF "\`/revisar local\` (opcional) → \`/abrir-pr\`" CLAUDE.md && grep -qF "\`/revisar local\` (opcional) → \`/abrir-pr\`" docs/README.md && grep -q "/revisar local (opcional) → /abrir-pr" docs/guia.md && grep -q "\`/revisar local\` revisa a" README.md && grep -q "revise localmente" CLAUDE.md'
+
 echo "consistência (CA-H1, CA-H2)"
 cd "$SRC"
 check "todo ./scripts/X citado no CLAUDE.md, READMEs e comandos existe e é executável" \

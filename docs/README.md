@@ -34,6 +34,8 @@ comportamento atualiza a spec no mesmo PR.
 ## Regras
 
 - A ordem das linhas em `roadmap.md` é a ordem de execução. Cada linha é uma issue.
+- Ciclo de uma task: `/implementar` → seu teste → `/revisar local` (opcional) → `/abrir-pr` → `/revisar` → merge → `/fechar`. O review local fica só na conversa;
+  o do PR é postado travado no head.
 - Planejamento em duas etapas: `/planejar` escreve a visão geral dos milestones; `/planejar M<n>`
   detalha só o próximo. Nunca existem issues (nem milestone no GitHub) de milestones futuros.
   O material sobre fases e trabalho a fazer passa do `/preparar` para o `/planejar` pela seção

@@ -32,7 +32,8 @@ bootstrap.sh (local, uma vez)
 → /preparar → merge
 → /planejar (visão geral) → merge
 → /planejar M0 → merge
-→ ciclo das tasks: /implementar → /qa → /abrir-pr → /revisar → /corrigir → merge → /fechar
+→ ciclo das tasks: /implementar → seu teste → (/qa) → /revisar local (opcional) → /abrir-pr
+  → /revisar → /corrigir → merge → /fechar
 → /fechar no fim do M0 (go/no-go) → /planejar M1 → ciclo → …
 ```
 
@@ -47,8 +48,8 @@ Cada comando, em `.claude/commands/`, tem papel, argumentos, passos, onde parar 
 | `/planejar M<n>` | Só para o **próximo** milestone (o anterior encerrado): escreve o doc do milestone e os ACs nas specs, propõe as issues (usando o trabalho registrado) e para. Depois do seu ok, cria o milestone e as issues e abre o PR `[docs] Planejar M<n>`, que também registra o encerramento do milestone anterior. |
 | `/implementar [issue]` | Retoma a task `doing` ou pega a primeira `todo`, confere que a anterior está fechada, cria `task/<N>-<slug>`, marca `doing` e implementa com testes, com commits locais e sem push. **Hotfix:** com outra task em andamento, confirma com você, guarda a task atual num commit `wip:` local, põe o hotfix logo depois da última `done` e, depois do `/fechar` dele, retoma a task interrompida. |
 | `/qa [issue]` | Tester, sem corrigir código: testa cada AC e salva prints em `pr-assets/issue-<N>/<sha7>/`. |
-| `/abrir-pr [issue]` | Marca `done`, dá push e abre o PR com o head no corpo e o comando de merge pronto. |
-| `/revisar [pr]` | O subagente `revisor` (só leitura, contexto limpo) posta um review `COMMENT` com Bloqueante, Deveria e Nit. |
+| `/abrir-pr [issue]` | Sem argumento, descobre a issue e o PR pelo `task-atual.sh` (para se houver dúvida). Marca `done`, dá push e abre o PR (ou atualiza o que já existe) com o head no corpo e o comando de merge pronto. |
+| `/revisar [pr \| local]` | O subagente `revisor` (só leitura, contexto limpo) revisa com Bloqueante, Deveria e Nit. Modo PR: posta um review `COMMENT` travado no head. Modo local (`/revisar local`, ou a branch sem PR): revisa `git diff origin/main...HEAD` antes do PR e devolve o review só na conversa, com os checks como `n/a (sem PR)`. |
 | `/corrigir [pr ou issue]` | Corrige só o que foi apontado, atualiza o PR e diz se você precisa testar de novo. |
 | `/fechar [pr]` | Pós-merge: sync do board e nits que viram issue (se você aprovar). No fim do milestone, confere o critério de saída e o go/no-go e os guarda no milestone fechado. |
 
@@ -67,6 +68,7 @@ local e na nuvem. A exceção é o `sync-board.sh`, que usa `gh project`.
 | `new-milestone.sh "M<n> — <nome>"` | Cria o milestone, sem duplicar. |
 | `new-issue.sh` | Cria a issue e a linha `todo` no roadmap; `--existing <N>` põe no roadmap uma issue que já existe, e `--after` também move a linha. |
 | `next-task.sh [<N>]` | Escolhe a task, confere a ordem e detecta o hotfix. |
+| `task-atual.sh [<N>]` | Diz qual é a task, a branch e o PR (argumento, branch atual, linha `doing`, branch à frente da `main`); nunca chuta. |
 | `task-status.sh <N> <todo\|doing\|done>` | Muda o status e sincroniza o board quando dá. |
 | `open-pr.sh <N>` | Abre o PR pelo template e grava o número dele no roadmap; `--update <pr>` atualiza o Head e os prints depois de um push. |
 | `merge.sh <pr> <head>` | Squash travado no head: o GitHub recusa se houve push depois da sua conferência. |
