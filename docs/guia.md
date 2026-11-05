@@ -56,6 +56,7 @@ Cada comando, em `.claude/commands/`, tem papel, argumentos, passos, onde parar 
 | `/revisar [pr \| local]` | O subagente `revisor` (só leitura, contexto limpo) revisa com Bloqueante, Deveria e Nit. Modo PR: posta um review `COMMENT` travado no head. Modo local (`/revisar local`, ou a branch sem PR): revisa `git diff origin/main...HEAD` antes do PR e devolve o review só na conversa, com os checks como `n/a (sem PR)`. |
 | `/corrigir [pr ou issue]` | Corrige só o que foi apontado, atualiza o PR e diz se você precisa testar de novo. |
 | `/fechar [pr]` | Pós-merge: sync do board e nits que viram issue (se você aprovar). No fim do milestone, confere o critério de saída e o go/no-go e os guarda no milestone fechado. |
+| `/ciclo [issue] \| fechar [pr]` | Atalho do ciclo da task (orquestrador): `/implementar`, depois os subagentes `revisor` (local) e `qa` em paralelo; para com os achados por severidade e corrige só o que você escolher (no máximo 2 voltas); abre o PR só com o seu "sim" e espera o merge; `fechar` roda o `/fechar`. |
 
 **Em outros agentes** (Codex, opencode, Hermes, Cursor): o `AGENTS.md` manda seguir o
 `CLAUDE.md`. Sem slash commands, o agente segue `.claude/commands/<x>.md`; sem subagentes, o
