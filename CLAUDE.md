@@ -36,12 +36,20 @@ Siga o comando; as frases ao lado continuam valendo e levam ao mesmo comando.
 | Revisar | `/revisar [pr \| local]` | "revise o PR", "revise localmente" | modo PR: review postado (subagente `revisor`); modo local (sem PR): review só na conversa |
 | Corrigir | `/corrigir [pr ou issue]` | "corrija" | correções commitadas (e enviadas) |
 | Fechar | `/fechar [pr]` | "fechei o merge", "feche a task" | board e nits atualizados; no fim do milestone, critério de saída e go/no-go |
+| Ciclo automático | `/ciclo [issue] \| fechar [pr]` | "rode o ciclo da task", "ciclo da issue N" | achados para decidir ou "Posso abrir o PR?"; com o "sim", PR aberto esperando o merge; `fechar`: resumo do `/fechar` |
 
 Fluxo: `/preparar` → merge → `/planejar` (visão geral) → merge → `/planejar M0` → merge → ciclo das
 tasks do M0 → `/fechar` (go/no-go) → `/planejar M1` → ciclo → `/fechar` → `/planejar M2` …
 
 Ciclo de uma task: `/implementar` → seu teste → `/revisar local` (opcional) → `/abrir-pr` →
 `/revisar` → merge → `/fechar`.
+
+Atalho: `/ciclo [issue]` encadeia esse ciclo. Segue o `/implementar`; chama em paralelo os
+subagentes `revisor` (modo local) e `qa` (`.claude/agents/qa.md`); mostra os achados por
+severidade e corrige (`/corrigir`) só o que você escolher, refazendo revisor e QA em sequência
+(no máximo 2 voltas); abre o PR (`/abrir-pr`) só com o seu "sim" e para esperando o merge, que é
+seu. Quando você avisar do merge (ou com `/ciclo fechar [pr]`), roda o `/fechar`. As regras de
+cada comando encadeado continuam valendo.
 
 ## Em outros agentes
 
@@ -53,6 +61,9 @@ O `AGENTS.md` aponta para este arquivo. Para agentes sem os recursos do Claude C
 - **Sem subagentes:** o `/revisar` deve rodar numa sessão nova (ou com outro modelo), seguindo
   `.claude/agents/revisor.md` só com leitura, para o review ter contexto limpo. Na mesma sessão
   que implementou, avise o usuário e não poste o review.
+- **Sem subagentes, o `/ciclo` não roda em paralelo:** use o `/revisar` (modo local, seguindo
+  `.claude/agents/revisor.md`) e o `/qa` (seguindo `.claude/agents/qa.md`) em sessões novas, um
+  depois do outro, e siga os outros passos do `.claude/commands/ciclo.md` na sessão que implementou.
 
 | Agente | Onde lê as regras | Como chamar um comando |
 |---|---|---|

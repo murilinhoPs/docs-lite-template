@@ -433,7 +433,7 @@ check "README: checklist cita os checks obrigatórios e o open-pr.sh --update (C
 check "README: seção Merge gate" grep -q '^## Merge gate' README.md
 check "README: modelo acessível e o que a cópia traz e não traz (CA-F2)" \
   bash -c 'm="$(awk "/^### Projeto modelo/ { s = 1; next } /^##/ { s = 0 } s" README.md)"; grep -q "Visibility" <<<"$m" && grep -q "BOARD_TEMPLATE=<owner>/<número>" <<<"$m" && grep -q "| A cópia traz | A cópia não traz |" <<<"$m" && grep -q "link" <<<"$m" && grep -q "auto-add" <<<"$m"'
-for c in preparar planejar implementar qa abrir-pr revisar corrigir fechar; do
+for c in preparar planejar implementar qa abrir-pr revisar corrigir fechar ciclo; do
   f=".claude/commands/$c.md"
   check "comando /$c com papel, argumentos, passos, onde parar e nunca (CA-D1)" \
     bash -c 'for h in Papel Argumentos Passos "Onde parar" Nunca; do grep -qx "## $h" "$0" || exit 1; done' "$f"
@@ -771,8 +771,8 @@ check "todo ./scripts/X citado no CLAUDE.md, READMEs e comandos existe e é exec
   bash -c 'for f in $(grep -rhoE "\./scripts/[a-z/-]+\.sh" CLAUDE.md README.md docs .claude | sort -u); do [ -x "$f" ] || { echo "$f"; exit 1; }; done'
 check "todo script de scripts/ está na tabela do CLAUDE.md (menos lib.sh e helpers)" \
   bash -c 'for f in scripts/*.sh scripts/test/run.sh; do [ "$f" = scripts/lib.sh ] && continue; grep -E "^\|" CLAUDE.md | grep -qF "./$f" || { echo "$f"; exit 1; }; done'
-check "os 8 comandos citados existem em .claude/commands, e o revisor em .claude/agents" \
-  bash -c 'for c in preparar planejar implementar qa abrir-pr revisar corrigir fechar; do [ -f ".claude/commands/$c.md" ] && grep -q "/$c" CLAUDE.md || { echo "$c"; exit 1; }; done; [ -f .claude/agents/revisor.md ] && test "$(ls .claude/commands | wc -l)" = 8'
+check "os 9 comandos citados existem em .claude/commands, e o revisor e o qa em .claude/agents" \
+  bash -c 'for c in preparar planejar implementar qa abrir-pr revisar corrigir fechar ciclo; do [ -f ".claude/commands/$c.md" ] && grep -q "/$c" CLAUDE.md || { echo "$c"; exit 1; }; done; [ -f .claude/agents/revisor.md ] && [ -f .claude/agents/qa.md ] && test "$(ls .claude/commands | wc -l)" = 9'
 check "frases-atalho apontam para os comandos certos" \
   bash -c 'grep -qE "^\| .*\`/preparar.*\"importe meus docs\"" CLAUDE.md && grep -qE "^\| .*\`/implementar.*\"próxima task\"" CLAUDE.md && grep -qE "^\| .*\`/abrir-pr.*\"pode abrir o PR\"" CLAUDE.md && grep -qE "^\| .*\`/revisar.*\"revise o PR\"" CLAUDE.md'
 check "AGENTS.md funciona num clone novo, mesmo com core.symlinks=false" \

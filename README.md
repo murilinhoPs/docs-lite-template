@@ -51,6 +51,7 @@ Fluxo: `/preparar` → merge → `/planejar` (visão geral) → merge → `/plan
 | `/revisar [pr \| local]` | Reviewer (subagente) | Modo PR: review postado como comentário; modo local (sem PR): review só na conversa |
 | `/corrigir [pr ou issue]` | Dev | Correções commitadas (e enviadas, se o PR existir) |
 | `/fechar [pr]` | PM | Board, nits e milestone atualizados |
+| `/ciclo [issue] \| fechar [pr]` | Orquestrador (subagentes `revisor` e `qa`) | Atalho do ciclo da task: para nos achados, no "Posso abrir o PR?" e esperando o merge; `fechar` roda o `/fechar` |
 
 ## Ciclo de uma task, em comandos
 
@@ -70,6 +71,12 @@ Fluxo: `/preparar` → merge → `/planejar` (visão geral) → merge → `/plan
    issue do milestone, o `/fechar` confere o critério de saída, fecha o milestone e, no M0, pergunta
    o go/no-go; aí vem o `/planejar M<n+1>`, cujo PR registra o encerramento (doc `encerrado` e, no
    M0, o ADR do go/no-go).
+
+**Atalho:** `/ciclo [issue]` faz os passos 2 a 8 encadeados. Depois do `/implementar`, os
+subagentes `revisor` (modo local) e `qa` rodam em paralelo; com achados, o `/ciclo` para, mostra
+tudo por severidade e corrige só o que você escolher (revisor e QA refeitos em sequência, no máximo
+2 voltas). Abre o PR só com o seu "sim" e para esperando o merge, que é seu; quando você avisar
+("mergeado") ou rodar `/ciclo fechar [pr]`, ele roda o `/fechar`.
 
 ---
 
